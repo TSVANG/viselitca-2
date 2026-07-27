@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Виселица</title>
+    <!-- Подключение VK Bridge -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%; overflow: hidden; -webkit-user-select: none; user-select: none;
+            touch-action: manipulation; position: fixed; width: 100%;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Стили модальных окон и анимаций */
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
+        .hide { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Стили для маленьких экранов */
+        @media (max-height: 600px) {
+            #hangman-container { max-height: 150px; }
+            #word-container, #keyboard { gap: 0.2rem; }
+            .key-btn { height: 2rem !important; font-size: 0.875rem !important; }
+            #main-menu-content { padding: 1rem !important; gap: 0.5rem !important; }
+        }
+
+        /* Скины магазина */
+        .skin-card { transition: transform 0.1s; }
+        .skin-card:active { transform: scale(0.95); }
+        .locked-level { filter: grayscale(100%); opacity: 0.7; pointer-events: none; }
+
+        /* Каталог игр */
+        .games-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .game-card { background: #f3f4f6; border-radius: 12px; padding: 8px; cursor: pointer; transition: transform 0.1s; border: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; }
+        .game-card:active { transform: scale(0.95); }
+        .game-img { width: 100%; aspect-ratio: 1/1; background: #ddd; border-radius: 12px; margin-bottom: 5px; object-fit: cover; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .game-title { font-size: 0.7rem; font-weight: bold; color: #374151; text-align: center; line-height: 1.2; }
+    </style>
+</head>
+<body class="bg-[#FDFBFA] flex flex-col items-center justify-center min-h-screen p-1 sm:p-2 text-gray-800" oncontextmenu="return false;">
+
+    <!-- ГЛАВНОЕ МЕНЮ -->
+    <div id="main-menu" class="fixed inset-0 bg-[#FDFBFA] z-40 flex flex-col items-center justify-center p-4">
+        <div id="main-menu-content" class="w-full max-w-sm flex flex-col gap-4 fade-in">
+            <!-- Статистика -->
+            <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex items-center gap-2"><span class="text-xl">🪙</span><span id="menu-coins" class="font-bold text-lg">0</span></div>
+                <div class="flex items-center gap-2"><span class="text-xl">🏆</span><span id="menu-score" class="font-bold text-lg">0</span></div>
+            </div>
+
+            <h1 class="text-4xl font-extrabold text-center my-2 text-gray-900 tracking-tight">ВИСЕЛИЦА</h1>
+
+            <!-- Кнопки уровней -->
+            <div class="space-y-3 relative">
+                <button data-level="easy" class="w-full bg-green-500 text-white font-bold py-3.5 px-4 rounded-2xl text-lg shadow-md active:scale-95 transition-transform">Легкий (4-6 букв)</button>
+                
+                <div class="relative group">
+                    <button data-level="medium" id="btn-lvl-medium" class="w-full bg-yellow-500 text-white font-bold py-3.5 px-4 rounded-2xl text-lg shadow-md active:scale-95 transition-transform locked-level flex justify-between items-center">
+                        <span>Средний (7-9 букв)</span><span class="text-sm bg-black/20 px-2 py-1 rounded-lg" id="lock-medium">🔒 0/10</span>
+                    </button>
+                </div>
+
+                <div class="relative group">
+                    <button data-level="hard" id="btn-lvl-hard" class="w-full bg-red-500 text-white font-bold py-3.5 px-4 rounded-2xl text-lg shadow-md active:scale-95 transition-transform locked-level flex justify-between items-center">
+                        <span>Сложный (10+)</span><span class="text-sm bg-black/20 px-2 py-1 rounded-lg" id="lock-hard">🔒 0/10</span>
+                    </button>
+                </div>
+
+                <div class="relative group">
+                    <button data-level="random" id="btn-lvl-random" class="w-full bg-purple-500 text-white font-bold py-3.5 px-4 rounded-2xl text-lg shadow-md active:scale-95 transition-transform locked-level flex justify-between items-center">
+                        <span>Бог рандома</span><span class="text-sm bg-black/20 px-2 py-1 rounded-lg" id="lock-random">🔒 0/10</span>
+                    </button>
+                </div>
+            </div>
+
+            <button id="btn-daily" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-3.5 px-4 rounded-2xl text-lg shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2 mt-2">
+                <span>🌟 Слово Дня (x3)</span>
+            </button>
+
+            <!-- Нижняя панель иконок -->
+            <div class="grid grid-cols-5 gap-2 mt-4">
+                <button onclick="shop.open()" class="bg-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center active:scale-95 shadow-sm border border-gray-200"><span class="text-2xl mb-1">🛒</span><span class="text-[10px] font-bold">Магазин</span></button>
+                <button onclick="dict.open()" class="bg-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center active:scale-95 shadow-sm border border-gray-200"><span class="text-2xl mb-1">📚</span><span class="text-[10px] font-bold">Словарь</span></button>
+                <button onclick="pvp.open()" class="bg-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center active:scale-95 shadow-sm border border-gray-200"><span class="text-2xl mb-1">⚔️</span><span class="text-[10px] font-bold">Вызов</span></button>
+                <button onclick="ui.showLeaderboard()" class="bg-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center active:scale-95 shadow-sm border border-gray-200"><span class="text-2xl mb-1">🏅</span><span class="text-[10px] font-bold">Топ</span></button>
+                <button onclick="ui.shareApp()" class="bg-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center active:scale-95 shadow-sm border border-gray-200"><span class="text-2xl mb-1">📤</span><span class="text-[10px] font-bold">Репост</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ИГРОВОЙ ЭКРАН -->
+    <div id="app-container" class="w-full max-w-md mx-auto flex flex-col h-full transition-all duration-300 hide z-10 relative">
+        <header class="flex justify-between items-center mb-2 flex-shrink-0 w-full">
+            <button onclick="ui.goToMenu()" class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center active:scale-95"><svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+            <div class="text-sm font-bold bg-gray-200 px-4 py-1.5 rounded-xl text-gray-700" id="game-diff-label">УРОВЕНЬ</div>
+            <div class="w-10 h-10 flex items-center justify-center bg-yellow-100 text-yellow-700 font-bold rounded-full text-xs border border-yellow-300"><span id="game-coins-show">0</span></div>
+        </header>
+
+        <main class="w-full flex flex-col items-center flex-grow justify-around min-h-0">
+            <div id="hangman-container" class="w-full max-w-[240px] sm:max-w-xs aspect-square relative bg-white rounded-3xl shadow-sm border border-gray-100"><canvas id="hangman-canvas" class="w-full h-full"></canvas></div>
+            <div id="word-container" class="flex flex-wrap justify-center gap-x-1 sm:gap-x-1.5 gap-y-2 my-2 text-2xl sm:text-3xl font-bold tracking-wider"></div>
+            <div id="keyboard" class="w-full flex flex-col items-center gap-1.5 mt-2"></div>
+            
+            <div class="mt-4 w-full flex justify-end px-4">
+                <button id="hint-button" class="w-14 h-14 bg-[#F9A825] rounded-full flex items-center justify-center shadow-lg relative active:scale-95 transition-transform">
+                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                    <span id="hint-count" class="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-[#FDFBFA]">3</span>
+                </button>
+            </div>
+        </main>
+    </div>
+    
+    <div id="banner-placeholder" class="w-full flex-shrink-0" style="height: 0px;"></div>
+
+    <!-- МОДАЛКИ (Все скрыты классом hide по умолчанию) -->
+    
+    <!-- Финал уровня -->
+    <div id="modal-end" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hide modal-overlay">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 text-center shadow-2xl w-full max-w-sm modal-content">
+            <h2 id="modal-title" class="text-3xl font-extrabold mb-2"></h2>
+            <p class="text-gray-500 mb-2 font-medium">Слово было:</p>
+            <p id="modal-word" class="text-2xl font-black text-gray-900 mb-6 tracking-widest"></p>
+            
+            <div id="modal-rewards" class="flex justify-center gap-4 mb-6">
+                <div class="bg-yellow-50 px-4 py-2 rounded-xl border border-yellow-200"><span class="text-xl block mb-1">🪙</span><span id="reward-coins" class="font-bold text-yellow-700">+0</span></div>
+                <div class="bg-blue-50 px-4 py-2 rounded-xl border border-blue-200"><span class="text-xl block mb-1">🏆</span><span id="reward-score" class="font-bold text-blue-700">+0</span></div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="game.nextWord()" class="w-full bg-green-500 text-white font-bold py-4 px-4 rounded-2xl text-lg active:scale-95 shadow-md">Следующее слово 🚀</button>
+                <button onclick="ui.goToMenu()" class="w-full bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-2xl text-lg active:scale-95">В главное меню</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Магазин -->
+    <div id="modal-shop" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hide modal-overlay">
+        <div class="bg-white rounded-3xl w-full max-w-md h-[80vh] flex flex-col overflow-hidden modal-content relative">
+            <button onclick="ui.closeModal('modal-shop')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full p-1 active:scale-95 z-10"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 class="text-2xl font-bold">Магазин</h2>
+                <div class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-xl font-bold mr-8">🪙 <span id="shop-coins">0</span></div>
+            </div>
+            
+            <div class="flex border-b border-gray-200 text-sm font-medium">
+                <button onclick="shop.switchTab('skins')" id="tab-skins" class="flex-1 py-3 text-blue-600 border-b-2 border-blue-600">Скины</button>
+                <button onclick="shop.switchTab('boosts')" id="tab-boosts" class="flex-1 py-3 text-gray-500 border-b-2 border-transparent">Бусты</button>
+                <button onclick="shop.switchTab('chest')" id="tab-chest" class="flex-1 py-3 text-gray-500 border-b-2 border-transparent">Сундук</button>
+            </div>
+
+            <div class="flex-grow overflow-y-auto p-4 bg-gray-50" id="shop-content">
+                <!-- Контент генерируется JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Словарь -->
+    <div id="modal-dict" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hide modal-overlay">
+        <div class="bg-white rounded-3xl w-full max-w-md h-[70vh] flex flex-col overflow-hidden modal-content relative">
+            <button onclick="ui.closeModal('modal-dict')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full p-1 active:scale-95"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <div class="p-6 border-b border-gray-100">
+                <h2 class="text-2xl font-bold">Словарь</h2>
+                <p class="text-sm text-gray-500 mt-1">Отгадано слов: <span id="dict-count" class="font-bold text-blue-500">0</span></p>
+            </div>
+            <div class="flex-grow overflow-y-auto p-6 flex flex-wrap gap-2 content-start" id="dict-list"></div>
+        </div>
+    </div>
+
+    <!-- Вызов другу (PVP) -->
+    <div id="modal-pvp" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hide modal-overlay">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 text-center shadow-2xl w-full max-w-sm modal-content relative">
+            <button onclick="ui.closeModal('modal-pvp')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full p-1 active:scale-95"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <h2 class="text-2xl font-bold mb-2">Брось вызов! ⚔️</h2>
+            <p class="text-sm text-gray-600 mb-6">Загадай свое слово и отправь ссылку другу. Посмотрим, сможет ли он угадать!</p>
+            <input type="text" id="pvp-input" maxlength="15" placeholder="Введите слово..." class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-bold text-center uppercase tracking-widest mb-4 outline-none focus:border-blue-500 transition-colors">
+            <button onclick="pvp.createLink()" class="w-full bg-blue-500 text-white font-bold py-3.5 px-4 rounded-xl text-lg active:scale-95 shadow-md">Сгенерировать и Отправить</button>
+        </div>
+    </div>
+
+    <!-- Каталог игр -->
+    <div id="games-modal" class="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50 hide modal-overlay">
+        <div class="bg-[#1e1e1e] rounded-2xl p-4 sm:p-6 text-center shadow-2xl w-full max-w-md border border-[#333] relative modal-content">
+            <button id="close-games-btn" class="absolute top-2 right-2 text-gray-400 hover:text-white bg-[#333] rounded-full p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <h2 class="text-xl sm:text-2xl font-bold mb-4 text-white">Другие наши игры 🎮</h2>
+            <div id="games-list" class="games-grid"></div>
+            <button id="close-games-btn-bottom" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-blue-700">Продолжить</button>
+        </div>
+    </div>
+
+    <!-- Обучение -->
+    <div id="tutorial-modal" class="fixed inset-0 bg-black/80 flex flex-col items-center justify-center p-4 z-[60] hide modal-overlay">
+        <div class="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center relative modal-content">
+            <h3 class="text-2xl font-extrabold mb-4" id="tut-title">Как играть?</h3>
+            <div class="h-32 flex items-center justify-center text-gray-700 text-lg font-medium mb-6 px-4" id="tut-text"></div>
+            
+            <div class="flex justify-between items-center mt-4">
+                <button onclick="tutorial.prev()" id="tut-prev" class="px-4 py-2 bg-gray-200 rounded-xl font-bold text-gray-700 active:scale-95 invisible">Назад</button>
+                <div class="flex gap-2" id="tut-dots"></div>
+                <button onclick="tutorial.next()" id="tut-next" class="px-4 py-2 bg-blue-500 rounded-xl font-bold text-white active:scale-95 shadow-md">Далее</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const APP_ID = 54053077; // ID игры для каталога и PVP
+        
+        const elements = {
+            mainMenu: document.getElementById('main-menu'), appContainer: document.getElementById('app-container'),
+            canvas: document.getElementById('hangman-canvas'), wordContainer: document.getElementById('word-container'), keyboardContainer: document.getElementById('keyboard'),
+            hintButton: document.getElementById('hint-button'), hintCountEl: document.getElementById('hint-count'),
+            menuCoins: document.getElementById('menu-coins'), menuScore: document.getElementById('menu-score'),
+            gameCoinsShow: document.getElementById('game-coins-show'), gameDiffLabel: document.getElementById('game-diff-label')
+        };
+        const ctx = elements.canvas.getContext('2d');
+
+        // Словари 
+        const words = { 
+            "4": ["БАБА","БАЗА","БАНК","БЕДА","БОЛЬ","БРАК","БРАТ","БЫЛЬ","ВЕЩЬ","ВИНА","ВИНО","ВКУС","ВОДА","ВОЛЯ","ВРАГ","ВРАЧ","ВХОД","ГЛАЗ","ГОРА","ГРЕХ","ГУБА","ДАМА","ДАЧА","ДВОР","ДЕЛО","ДЕНЬ","ДОЛГ","ДОЛЯ","ДОЧЬ","ДРУГ","ДУМА","ДУША","ДЯДЯ","ЖЕНА","ЗВУК","ЗИМА","ЗНАК","ЗОНА","ИГРА","ИДЕЯ","ИТОГ","ИЮЛЬ","ИЮНЬ","КАДР","КЛУБ","КЛЮЧ","КОЖА","КОНЬ","КОФЕ","КРАЙ","КРИК","КУРС","КУСТ","ЛЕТО","ЛИСТ","ЛИЦО","МАМА","МАТЬ","МЕРА","МЕТР","МИНА","МОЗГ","МОРЕ","МОСТ","МЯСО","НЕБО","НОГА","НОЧЬ","ОБЕД","ОКНО","ОПЫТ","ОТЕЦ","ОЧКО","ПАПА","ПАРА","ПИВО","ПЛАН","ПОЛЕ","ПОЛК","ПОЭТ","ПУТЬ","РЕКА","РИСК","РОЛЬ","РУКА","РЫБА","СБОР","СЕЛО","СЕМЬ","СЕТЬ","СЛОЙ","СЛУХ","СМЕХ","СНЕГ","СОЮЗ","СПОР","СРОК","СТИХ","СТОЛ","СТУЛ","СУТЬ","СЧЕТ","ТАНК","ТЕЛО","ТЕМП","ТЕНЬ","ТЕТЯ","ТРУД","УГОЛ","УДАР","УЖАС","УРОК","УТРО","УХОД","УЧЕТ","ФАКТ","ФОНД","ХЛЕБ","ХРАМ","ЦАРЬ","ЦВЕТ","ЦЕЛЬ","ЦЕНА","ЧЕРТ","ЧЛЕН","ЧУДО","ШАНС","ШТАБ","ШТАТ","ЩЕКА","ЭТАЖ","ЭТАП","ЯЗЫК","ЯЩИК"],
+            "7": ["АВТОБУС","АВТОМАТ","АППАРАТ","БАБУШКА","БОЛЕЗНЬ","БОЛЬНОЙ","БУДУЩЕЕ","БУТЫЛКА","ВАРИАНТ","ВЕРШИНА","ВЛИЯНИЕ","ВОЗРАСТ","ВОСТОРГ","ВСТРЕЧА","ГЕНЕРАЛ","ГЛАВНОЕ","ГЛУБИНА","ГОСПОДЬ","ГРАНИЦА","ДЕВОЧКА","ДЕВУШКА","ДЕКАБРЬ","ДЕПУТАТ","ДЕРЕВНЯ","ДЕСЯТОК","ДЕТСТВО","ДОГОВОР","ДЫХАНИЕ","ЕДИНИЦА","ЖЕЛАНИЕ","ЖЕНЩИНА","ЗАНЯТИЕ","ЗАПИСКА","ЗАТРАТА","ЗЕРКАЛО","ЗРИТЕЛЬ","ИЗДАНИЕ","ИНЖЕНЕР","ИНТЕРЕС","ИСТОРИЯ","КАБИНЕТ","КАПИТАЛ","КАПИТАН","КАРТИНА","КОЛЛЕГА","КОМАНДА","КОМИТЕТ","КОМНАТА","КОНКУРС","КОНТАКТ","КОНЦЕРТ","КОРАБЛЬ","КОРИДОР","КРАСОТА","КРОВАТЬ","МАГАЗИН","МАЛЬЧИК","МАСШТАБ","МИЛИЦИЯ","МИЛЛИОН","МИНИСТР","МОСКВИЧ","МУЖЧИНА","НАДЕЖДА","НАЛИЧИЕ","НОВОСТЬ","ОБЛАСТЬ","ОБОРОНА","ОБРАЗЕЦ","ОБЩЕНИЕ","ОКТЯБРЬ","ОСТАТОК","ОТЛИЧИЕ","ОТРАСЛЬ","ОЧЕРЕДЬ","ПАРТНЕР","ПЕРЕВОД","ПЕРЕХОД","ПЛОЩАДЬ","ПОВОРОТ","ПОДАРОК","ПОДРУГА","ПОДЪЕЗД","ПОЕЗДКА","ПОЗИЦИЯ","ПОНЯТИЕ","ПОПЫТКА","ПОРТРЕТ","ПОРЯДОК","ПОСЕЛОК","ПОСТЕЛЬ","ПОТОЛОК","ПРАВИЛО","ПРЕДМЕТ","ПРИЗНАК","ПРИНЦИП","ПРИРОДА","ПРИЧИНА","ПРОДАЖА","ПРОДУКТ","ПРОСЬБА","ПРОЦЕНТ","ПРОЦЕСС","ПРОШЛОЕ","ПУБЛИКА","РАБОЧИЙ","РАДОСТЬ","РАЗНИЦА","РАССКАЗ","РЕАКЦИЯ","РЕБЕНОК","РЕКЛАМА","РЕФОРМА","РЕШЕНИЕ","РИСУНОК","РУССКИЙ","САМОЛЕТ","СВОБОДА","СЕКУНДА","СИСТЕМА","СОБЫТИЕ","СОВЕСТЬ","СТАНЦИЯ","СТАРУХА","СТЕПЕНЬ","СТОЛИЦА","СТОРОНА","СТРАСТЬ","СТУДЕНТ","СУБЪЕКТ","СЧАСТЬЕ","ТАБЛИЦА","ТЕЛЕФОН","ТЕМНОТА","ТЕХНИКА","ТЕЧЕНИЕ","ТОВАРИЩ","УРОВЕНЬ","УСЛОВИЕ","УЧАСТИЕ","УЧАСТОК","УЧИТЕЛЬ","ФАМИЛИЯ","ФЕВРАЛЬ","ФОРМУЛА","ФУНКЦИЯ","ХОЗЯЙКА","ЦЕРКОВЬ","ЧЕЛОВЕК","ЧУВСТВО","ЭКСПЕРТ","ЭЛЕМЕНТ","ЭНЕРГИЯ","ЯВЛЕНИЕ"],
+            "10": ["АВТОМОБИЛЬ","АКТИВНОСТЬ","АМЕРИКАНЕЦ","БИБЛИОТЕКА","ВОСПИТАНИЕ","ВЫПОЛНЕНИЕ","ГУБЕРНАТОР","ДОСТИЖЕНИЕ","ЗАКЛЮЧЕНИЕ","ИНИЦИАТИВА","ИНСТРУМЕНТ","ИНФОРМАЦИЯ","ИСКЛЮЧЕНИЕ","ИСПОЛНЕНИЕ","КОЛИЧЕСТВО","ЛИТЕРАТУРА","НАБЛЮДЕНИЕ","НАЗНАЧЕНИЕ","НАСТРОЕНИЕ","НАЧАЛЬСТВО","НЕДОСТАТОК","ОБСТАНОВКА","ОБЪЯСНЕНИЕ","ОТСУТСТВИЕ","ПЕРЕГОВОРЫ","ПОДГОТОВКА","ПОКАЗАТЕЛЬ","ПОКУПАТЕЛЬ","ПРИМЕНЕНИЕ","ПРОВЕДЕНИЕ","ПСИХОЛОГИЯ","РАЗРАБОТКА","РАЗРЕШЕНИЕ","РАССТОЯНИЕ","РЕАЛИЗАЦИЯ","РЕАЛЬНОСТЬ","РЕСПУБЛИКА","СОГЛАШЕНИЕ","СОДЕРЖАНИЕ","СОЕДИНЕНИЕ","СПЕЦИАЛИСТ","ТВОРЧЕСТВО","ТЕРРИТОРИЯ","ТЕХНОЛОГИЯ","ТРЕБОВАНИЕ","УВЕЛИЧЕНИЕ","УПРАВЛЕНИЕ","УСТРОЙСТВО","УЧРЕЖДЕНИЕ","ФОТОГРАФИЯ"]
+        };
+        const GAMES_CATALOG = [ { id: 54691165, name: "Wordle", img: "https://sun9-29.userapi.com/s/v1/ig2/BfB_2rWcQeKjC0gE1V5sA7a0Qe0qE-G2QvH1-E_7YV6z6F-0O1rQo_o4d9HlU-t8x5C4b8_o-gP-g_0f4W5k-i0t.jpg?size=200x200&quality=95&crop=0,0,1024,1024&ava=1" }, { id: 54053077, name: "Виселица", img: "https://sun9-53.userapi.com/s/v1/ig2/0Z3T1X7p-X4X6e2v5-0U_0Q1-E8y3_5Y0r9Q-y_1X_1Q7z-8e6-1X6r4E1Y5t-2u7Q-0E4_6Q_1u5U9Y-8y7r_1Q.jpg?size=200x200&quality=95&crop=0,0,1024,1024&ava=1" }, { id: 54051783, name: "Numberzilla", img: "https://sun9-79.userapi.com/s/v1/ig2/1X6Y-2_5v6-3r-1Q8y7-2U_7e_7y-4T8E9E_7Q_0-7o0T-5-8t_2_7r-7q8v0Y_4-2t8_0_1X6E-8r7t-7E-0Q-9.jpg?size=200x200&quality=95&crop=0,0,1024,1024&ava=1" }, { id: 54688189, name: "Судоку", img: "https://sun9-49.userapi.com/s/v1/ig2/8X_0Q-2E7Q6_1r-8-4u7E6X1t0E1v_7X_8Q-9-8q-0t7Y6v6X-8Q-0U7Q9e9X1t_1e0v7r_7t6Y_8-0E7X_7r7U.jpg?size=200x200&quality=95&crop=0,0,1024,1024&ava=1" } ];
+        const keyboardLayout = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
+        
+        let pData = { coins: 0, score: 0, stats: { easy: 0, medium: 0, hard: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', adChests: 0, adChestDate: '' };
+        let currentWord = '', guessedLetters = [], wrongGuesses = 0, difficulty = 'easy', isPvp = false, gameActive = false;
+        
+        // --- VK BRIDGE ВЗАИМОДЕЙСТВИЕ ---
+        const vk = {
+            init: async () => {
+                vkBridge.send('VKWebAppInit');
+                try {
+                    const hash = window.location.hash;
+                    if(hash.startsWith('#pvp=')) { 
+                        const w = decodeURIComponent(escape(atob(hash.split('=')[1]))); 
+                        setTimeout(()=> pvp.start(w), 500); // Даем время загрузиться
+                    }
+                } catch(e) {}
+                
+                // Таймер для загрузки (Fallback)
+                await Promise.race([
+                    new Promise(res => {
+                        vkBridge.send('VKWebAppStorageGet', { keys: ['pData'] })
+                        .then(d => { if (d.keys[0].value) pData = Object.assign(pData, JSON.parse(d.keys[0].value)); res(); })
+                        .catch(() => res());
+                    }),
+                    new Promise(res => setTimeout(res, 800))
+                ]);
+                
+                vk.showBanner();
+                ui.updateMenuStats();
+                
+                if(!window.location.hash.startsWith('#pvp=')){
+                    if (!pData.tut) tutorial.start(); else ui.showMenu();
+                }
+            },
+            save: () => { try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){} },
+            showBanner: () => vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' }).catch(()=>{}),
+            showInterstitial: () => vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' }).catch(()=>{}),
+            showReward: async () => { try { const d = await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' }); return d.result; } catch(e) { return false; } }
+        };
+
+        // --- ЛОГИКА ИГРЫ ---
+        const game = {
+            init: (diff) => {
+                difficulty = diff; isPvp = false; gameActive = true;
+                wrongGuesses = 0; guessedLetters = [];
+                elements.mainMenu.classList.add('hide'); elements.appContainer.classList.remove('hide');
+                
+                if (diff === 'daily') {
+                    pData.lastDaily = new Date().toISOString().split('T')[0];
+                    vk.save();
+                }
+                
+                let pool = [];
+                if (diff === 'easy') pool = words["4"];
+                else if (diff === 'medium') pool = words["7"];
+                else if (diff === 'hard') pool = words["10"];
+                else pool = [...words["4"], ...words["7"], ...words["10"]];
+                
+                currentWord = pool[Math.floor(Math.random() * pool.length)];
+                game.setupUI();
+            },
+            setupUI: () => {
+                elements.gameDiffLabel.textContent = isPvp ? "ВЫЗОВ" : difficulty === 'daily' ? "СЛОВО ДНЯ" : difficulty.toUpperCase();
+                elements.gameCoinsShow.textContent = pData.coins;
+                elements.hintCountEl.textContent = pData.hints;
+                ui.displayWord(); ui.createKeyboard(); draw.resizeCanvas();
+            },
+            handleGuess: (letter) => {
+                if (!gameActive || guessedLetters.includes(letter)) return;
+                guessedLetters.push(letter);
+                const btn = document.getElementById(`key-${letter}`); btn.disabled = true;
+                if (currentWord.includes(letter)) {
+                    btn.className = btn.className.replace(/bg-gray-200|text-gray-700/g, 'bg-green-500 text-white border-green-600'); 
+                    ui.displayWord();
+                } else {
+                    wrongGuesses++; 
+                    btn.className = btn.className.replace(/bg-gray-200|text-gray-700/g, 'bg-gray-300 text-gray-500 opacity-50'); 
+                    draw.hangman();
+                    if (wrongGuesses >= 6) game.end(false);
+                }
+            },
+            useHint: () => {
+                if (!gameActive || pData.hints <= 0) { if(pData.hints <= 0) shop.open(); return; }
+                const unguessed = currentWord.split('').filter(l => !guessedLetters.includes(l));
+                if (unguessed.length === 0) return;
+                pData.hints--; vk.save(); elements.hintCountEl.textContent = pData.hints;
+                game.handleGuess(unguessed[Math.floor(Math.random() * unguessed.length)]);
+            },
+            end: (isWin) => {
+                gameActive = false; pData.plays++;
+                let c = 0, s = 0;
+                
+                if (isWin) {
+                    c = currentWord.length * 2 + (6 - wrongGuesses) * 3;
+                    s = currentWord.length * 5;
+                    if(difficulty === 'daily') { c*=3; s*=3; }
+                    pData.coins += c; pData.score += s;
+                    if(!isPvp) pData.stats[difficulty]++;
+                    if(!pData.dict.includes(currentWord)) pData.dict.push(currentWord);
+                    
+                    try { vkBridge.send("VKWebAppCallAPIMethod", {method: "secure.addAppEvent", params: {user_id: 0, activity_id: 1, value: pData.score, v: "5.131", access_token: ""}}); } catch(e){} // Dummy call for score update conceptual logic
+                }
+                vk.save();
+
+                setTimeout(() => {
+                    document.getElementById('modal-title').textContent = isWin ? 'Победа! 🎉' : 'Увы... 💀';
+                    document.getElementById('modal-title').className = isWin ? 'text-3xl font-extrabold mb-2 text-green-500' : 'text-3xl font-extrabold mb-2 text-red-500';
+                    document.getElementById('modal-word').textContent = currentWord;
+                    document.getElementById('reward-coins').textContent = `+${c}`;
+                    document.getElementById('reward-score').textContent = `+${s}`;
+                    ui.openModal('modal-end');
+                    
+                    if (pData.plays % 7 === 0) vk.showInterstitial();
+                    else if (pData.plays % 10 === 0) catalog.open();
+                }, 600);
+            },
+            nextWord: () => {
+                ui.closeModal('modal-end');
+                if (isPvp || difficulty === 'daily') ui.goToMenu(); // PvP and Daily exist after one word
+                else game.init(difficulty);
+            }
+        };
+
+        // --- ОТРИСОВКА (CANVAS) ---
+        const draw = {
+            resizeCanvas: () => {
+                const c = elements.canvas.parentElement; const s = Math.min(c.clientWidth, c.clientHeight);
+                elements.canvas.width = s; elements.canvas.height = s;
+                draw.hangman();
+            },
+            hangman: () => {
+                const w = elements.canvas.width, h = elements.canvas.height;
+                ctx.clearRect(0, 0, w, h); ctx.lineCap = 'round'; 
+                
+                // Виселица
+                ctx.strokeStyle = '#8B4513'; ctx.lineWidth = w * 0.03; ctx.beginPath();
+                ctx.moveTo(w * 0.1, h * 0.95); ctx.lineTo(w * 0.9, h * 0.95); ctx.stroke(); ctx.beginPath();
+                ctx.moveTo(w * 0.25, h * 0.95); ctx.lineTo(w * 0.25, h * 0.1); ctx.lineTo(w * 0.65, h * 0.1); ctx.stroke();
+                ctx.lineWidth = w * 0.015; ctx.beginPath(); ctx.moveTo(w * 0.65, h * 0.1); ctx.lineTo(w * 0.65, h * 0.2); ctx.stroke();
+
+                // Человечек
+                ctx.strokeStyle = '#333'; ctx.lineWidth = w * 0.02; ctx.beginPath();
+                const cX = w * 0.65, hY = h * 0.25, r = w * 0.05;
+                if (wrongGuesses > 0) ctx.arc(cX, hY, r, 0, Math.PI * 2);
+                if (wrongGuesses > 1) { ctx.moveTo(cX, hY + r); ctx.lineTo(cX, hY + r + h * 0.2); }
+                if (wrongGuesses > 2) { ctx.moveTo(cX, hY + r + h * 0.05); ctx.lineTo(cX - w * 0.1, hY + r + h * 0.15); }
+                if (wrongGuesses > 3) { ctx.moveTo(cX, hY + r + h * 0.05); ctx.lineTo(cX + w * 0.1, hY + r + h * 0.15); }
+                if (wrongGuesses > 4) { ctx.moveTo(cX, hY + r + h * 0.2); ctx.lineTo(cX - w * 0.1, hY + r + h * 0.3); }
+                if (wrongGuesses > 5) { ctx.moveTo(cX, hY + r + h * 0.2); ctx.lineTo(cX + w * 0.1, hY + r + h * 0.3); }
+                ctx.stroke();
+
+                // Скин
+                if (wrongGuesses > 0 && pData.equippedSkin > 0) {
+                    const skinMap = {1:'🧢', 2:'🎩', 3:'👑', 4:'🕶️', 5:'🎀', 6:'🥸', 7:'🧣', 8:'🦄', 9:'👽'};
+                    ctx.font = `${r*2.5}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    const offset = [4,6].includes(pData.equippedSkin) ? 0 : -r; // Очки на лицо, шляпы выше
+                    ctx.fillText(skinMap[pData.equippedSkin], cX, hY + offset);
+                }
+            }
+        };
+
+        // --- UI ФУНКЦИИ ---
+        const ui = {
+            showMenu: () => {
+                ui.closeAllModals(); elements.appContainer.classList.add('hide'); elements.mainMenu.classList.remove('hide'); ui.updateMenuStats();
+            },
+            goToMenu: () => { gameActive = false; ui.showMenu(); },
+            updateMenuStats: () => {
+                elements.menuCoins.textContent = pData.coins; elements.menuScore.textContent = pData.score;
+                const checkLvl = (id, req, reqStr) => {
+                    const btn = document.getElementById(`btn-lvl-${id}`); const lck = document.getElementById(`lock-${id}`);
+                    if (req >= 10) { btn.classList.remove('locked-level'); lck.classList.add('hide'); btn.onclick = () => game.init(id); } 
+                    else { btn.classList.add('locked-level'); lck.classList.remove('hide'); lck.textContent = `🔒 ${req}/10 ${reqStr}`; btn.onclick = null; }
+                };
+                checkLvl('medium', pData.stats.easy, 'Лёгких');
+                checkLvl('hard', pData.stats.medium, 'Средних');
+                checkLvl('random', pData.stats.hard, 'Сложных');
+                
+                const dBtn = document.getElementById('btn-daily');
+                if(pData.lastDaily === new Date().toISOString().split('T')[0]) { dBtn.classList.add('locked-level', 'opacity-50'); dBtn.textContent = '🌟 Жди завтра'; dBtn.onclick=null; }
+                else { dBtn.classList.remove('locked-level', 'opacity-50'); dBtn.innerHTML = '🌟 Слово Дня (x3)'; dBtn.onclick=()=>game.init('daily'); }
+            },
+            displayWord: () => {
+                const lh = window.innerHeight < 600 ? 'h-8' : 'h-10 sm:h-12';
+                elements.wordContainer.innerHTML = currentWord.split('').map(l => `<div class="flex flex-col items-center justify-end ${lh} w-[8%] max-w-[2rem]"><span class="text-gray-900 leading-none">${guessedLetters.includes(l) ? l : '&nbsp;'}</span><div class="w-full h-1 sm:h-1.5 bg-gray-800 mt-1 rounded-full"></div></div>`).join('');
+                if (gameActive && currentWord.split('').every(l => guessedLetters.includes(l))) game.end(true);
+            },
+            createKeyboard: () => {
+                elements.keyboardContainer.innerHTML = '';
+                keyboardLayout.forEach(row => {
+                    const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center gap-1 sm:gap-1.5 w-full';
+                    row.split('').forEach(key => {
+                        const btn = document.createElement('button'); btn.textContent = key; btn.id = `key-${key}`;
+                        btn.className = 'key-btn h-10 w-[8.5%] max-w-[2.2rem] text-sm sm:text-base font-bold rounded-xl bg-white text-gray-700 shadow-sm border border-gray-200 active:scale-90 transition-all';
+                        btn.onclick = () => game.handleGuess(key);
+                        if (guessedLetters.includes(key)) {
+                            btn.disabled = true;
+                            btn.className = currentWord.includes(key) ? btn.className.replace(/bg-white|text-gray-700/g, 'bg-green-500 text-white border-green-600') : btn.className.replace(/bg-white|text-gray-700/g, 'bg-gray-300 text-gray-500 opacity-50');
+                        }
+                        rowDiv.appendChild(btn);
+                    }); elements.keyboardContainer.appendChild(rowDiv);
+                });
+            },
+            openModal: id => { document.getElementById(id).classList.remove('hide'); },
+            closeModal: id => { document.getElementById(id).classList.add('hide'); },
+            closeAllModals: () => { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hide')); },
+            shareApp: () => vkBridge.send('VKWebAppShare', { link: "https://vk.com/app" + APP_ID }),
+            showLeaderboard: () => vkBridge.send("VKWebAppShowLeaderBoardBox", {user_result: pData.score}).catch(()=>alert("Сначала набери больше очков!"))
+        };
+
+        // --- МАГАЗИН ---
+        const shop = {
+            open: () => { ui.openModal('modal-shop'); shop.switchTab('skins'); },
+            updateTop: () => { document.getElementById('shop-coins').textContent = pData.coins; elements.menuCoins.textContent = pData.coins; },
+            switchTab: (tab) => {
+                ['skins','boosts','chest'].forEach(t => {
+                    document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-3 text-blue-600 border-b-2 border-blue-600 font-bold' : 'flex-1 py-3 text-gray-500 border-b-2 border-transparent';
+                });
+                const c = document.getElementById('shop-content'); c.innerHTML = '';
+                if(tab==='skins') {
+                    const grid = document.createElement('div'); grid.className = 'grid grid-cols-3 gap-3';
+                    const skinMap = {1:['🧢',200], 2:['🎩',300], 3:['👑',1000], 4:['🕶️',250], 5:['🎀',250], 6:['🥸',400], 7:['🧣',300], 8:['🦄',800], 9:['👽',900]};
+                    for(let i=1; i<=9; i++) {
+                        const owns = pData.skins.includes(i); const eq = pData.equippedSkin === i; const price = skinMap[i][1];
+                        grid.innerHTML += `<div class="bg-white border rounded-2xl p-2 flex flex-col items-center skin-card ${eq?'border-blue-500 bg-blue-50':'border-gray-200'}" onclick="shop.handleSkin(${i}, ${price})">
+                            <span class="text-4xl my-2">${skinMap[i][0]}</span>
+                            ${owns ? (eq ? '<span class="text-xs font-bold text-blue-500">НАДЕТО</span>' : '<span class="text-xs font-bold text-gray-500">НАДЕТЬ</span>') : `<span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 rounded w-full text-center">🪙 ${price}</span>`}
+                        </div>`;
+                    }
+                    if(pData.equippedSkin > 0) grid.innerHTML += `<div class="col-span-3 mt-2"><button onclick="shop.handleSkin(0,0)" class="w-full bg-gray-200 text-gray-700 py-2 rounded-xl text-sm font-bold active:scale-95">Снять скин</button></div>`;
+                    c.appendChild(grid);
+                } else if(tab==='boosts') {
+                    c.innerHTML = `<div class="bg-white p-4 rounded-2xl border border-gray-200 flex items-center justify-between shadow-sm">
+                        <div class="flex items-center gap-3"><div class="bg-[#F9A825] p-2 rounded-full text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg></div>
+                        <div><p class="font-bold">Подсказка</p><p class="text-xs text-gray-500">Откроет 1 верную букву</p></div></div>
+                        <button onclick="shop.buyHint()" class="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-xl font-bold active:scale-95">🪙 80</button>
+                    </div><p class="text-center text-sm text-gray-400 mt-4">У вас подсказок: <span class="font-bold text-gray-600">${pData.hints}</span></p>`;
+                } else {
+                    const today = new Date().toISOString().split('T')[0];
+                    if (pData.adChestDate !== today) { pData.adChests = 0; pData.freeChest = ''; pData.adChestDate = today; vk.save(); }
+                    const freeAv = pData.freeChest !== today;
+                    const adsAv = pData.adChests < 3;
+                    c.innerHTML = `<div class="text-center py-4"><span class="text-6xl block mb-4">🎁</span><h3 class="font-bold text-xl mb-2">Сундук удачи</h3><p class="text-sm text-gray-500 mb-6">Внутри монеты или подсказки!</p>
+                        ${freeAv ? `<button onclick="shop.openChest('free')" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl active:scale-95 mb-3 shadow-md text-lg">Открыть БЕСПЛАТНО</button>` : ''}
+                        ${!freeAv && adsAv ? `<button onclick="shop.openChest('ad')" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl active:scale-95 shadow-md flex justify-center items-center gap-2 text-lg"><span>Открыть за Видео</span><span class="text-xs bg-black/20 px-2 py-1 rounded">Осталось: ${3-pData.adChests}</span></button>` : ''}
+                        ${!freeAv && !adsAv ? `<p class="text-red-500 font-bold bg-red-50 py-3 rounded-xl border border-red-200">Сундуки на сегодня закончились</p>` : ''}
+                    </div>`;
+                }
+            },
+            handleSkin: (id, price) => {
+                if(id===0) { pData.equippedSkin = 0; }
+                else if(pData.skins.includes(id)) { pData.equippedSkin = id; }
+                else if(pData.coins >= price) { pData.coins -= price; pData.skins.push(id); pData.equippedSkin = id; }
+                else return; // Not enough coins
+                vk.save(); shop.updateTop(); shop.switchTab('skins'); if(gameActive) draw.hangman();
+            },
+            buyHint: () => { if(pData.coins >= 80) { pData.coins -= 80; pData.hints++; vk.save(); shop.updateTop(); shop.switchTab('boosts'); elements.hintCountEl.textContent = pData.hints; } },
+            openChest: async (type) => {
+                if (type === 'ad') { const res = await vk.showReward(); if(!res) return; pData.adChests++; }
+                else { pData.freeChest = new Date().toISOString().split('T')[0]; }
+                const isHint = Math.random() > 0.7;
+                if(isHint) { pData.hints++; alert("🎉 Вы нашли 1 Подсказку!"); } else { const c = Math.floor(Math.random()*50)+20; pData.coins+=c; alert(`🎉 Вы нашли ${c} 🪙!`); }
+                vk.save(); shop.updateTop(); shop.switchTab('chest'); elements.hintCountEl.textContent = pData.hints;
+            }
+        };
+
+        // --- ОБУЧЕНИЕ ---
+        const tutorial = {
+            step: 0,
+            texts: ["Отгадай слово, нажимая на буквы", "Верная буква появится на доске", "За ошибку рисуется виселица", "Спаси человечка до 6 ошибок!"],
+            start: () => { tutorial.step = 0; ui.openModal('tutorial-modal'); tutorial.render(); },
+            render: () => {
+                document.getElementById('tut-text').textContent = tutorial.texts[tutorial.step];
+                document.getElementById('tut-prev').className = tutorial.step === 0 ? "px-4 py-2 bg-gray-200 rounded-xl font-bold text-gray-700 invisible" : "px-4 py-2 bg-gray-200 rounded-xl font-bold text-gray-700 active:scale-95";
+                document.getElementById('tut-next').textContent = tutorial.step === 3 ? "Играть!" : "Далее";
+                document.getElementById('tut-dots').innerHTML = [0,1,2,3].map(i => `<div class="w-2 h-2 rounded-full ${i===tutorial.step?'bg-blue-500':'bg-gray-300'}"></div>`).join('');
+            },
+            next: () => { if(tutorial.step < 3) { tutorial.step++; tutorial.render(); } else { pData.tut = true; vk.save(); ui.closeModal('tutorial-modal'); ui.showMenu(); } },
+            prev: () => { if(tutorial.step > 0) { tutorial.step--; tutorial.render(); } }
+        };
+
+        // --- PVP ВЫЗОВ ---
+        const pvp = {
+            open: () => ui.openModal('modal-pvp'),
+            createLink: () => {
+                const w = document.getElementById('pvp-input').value.toUpperCase().trim().replace(/[^А-ЯЁ]/g, '');
+                if (w.length < 3) { alert("Слово должно содержать от 3 букв (только кириллица)!"); return; }
+                const b64 = btoa(unescape(encodeURIComponent(w)));
+                const link = `https://vk.com/app${APP_ID}#pvp=${b64}`;
+                vkBridge.send('VKWebAppShare', { link: link }).then(() => ui.closeModal('modal-pvp'));
+            },
+            start: (word) => { ui.closeAllModals(); game.init('pvp'); isPvp = true; currentWord = word.toUpperCase(); game.setupUI(); }
+        };
+
+        // --- СЛОВАРЬ ---
+        const dict = {
+            open: () => {
+                ui.openModal('modal-dict'); document.getElementById('dict-count').textContent = pData.dict.length;
+                document.getElementById('dict-list').innerHTML = pData.dict.length ? pData.dict.map(w => `<div class="bg-blue-50 text-blue-800 font-bold px-3 py-1.5 rounded-lg border border-blue-200">${w}</div>`).join('') : '<p class="text-gray-400 w-full text-center mt-10">Тут пока пусто. Играй и пополняй словарь!</p>';
+            }
+        };
+
+        // --- КАТАЛОГ ИГР ---
+        const catalog = {
+            open: () => {
+                ui.openModal('games-modal');
+                document.getElementById('games-list').innerHTML = GAMES_CATALOG.map(g => `<div class="game-card" onclick="vkBridge.send('VKWebAppOpenApp', {app_id: ${g.id}, location: 'catalog'})"><img src="${g.img}" class="game-img"><span class="game-title">${g.name}</span></div>`).join('');
+                document.getElementById('close-games-btn').onclick = catalog.close; document.getElementById('close-games-btn-bottom').onclick = catalog.close;
+            },
+            close: () => ui.closeModal('games-modal')
+        };
+
+        vkBridge.subscribe((e) => { if (e.detail.type === 'VKWebAppBannerAdUpdated') { elements.appContainer.style.paddingBottom = `${e.detail.data.height}px`; elements.mainMenu.style.paddingBottom = `${e.detail.data.height}px`; } });
+        
+        vk.init();
+    </script>
+</body>
+</html>
