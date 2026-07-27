@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Виселица</title>
+    <!-- Подключение VK Bridge -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            -webkit-user-select: none; user-select: none;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            position: fixed;
+            width: 100%;
+        }
+        .modal-overlay, #difficulty-menu, #continue-game-menu {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content, #difficulty-content, #continue-game-content {
+            transition: transform 0.3s ease;
+        }
+        @keyframes hand-point {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(5px) scale(1.05); }
+        }
+        .hand-animation { animation: hand-point 1.5s ease-in-out infinite; }
+        
+        @media (max-height: 600px) {
+            main { justify-content: space-evenly; }
+            #word-container, #keyboard, .mt-2 { margin-top: 0.25rem; margin-bottom: 0.25rem; }
+            #hangman-container { max-height: 180px; flex-shrink: 1; }
+        }
+    </style>
+</head>
+<body class="bg-[#FDFBFA] flex flex-col items-center justify-center min-h-screen p-1 sm:p-2" oncontextmenu="return false;">
+
+    <!-- Меню выбора сложности -->
+    <div id="difficulty-menu" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div id="difficulty-content" class="bg-white rounded-2xl p-6 sm:p-8 text-center shadow-2xl w-full max-w-sm relative">
+            <button id="close-menu-button" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            <h2 class="text-2xl sm:text-3xl font-bold mb-6">Выберите сложность</h2>
+            <div class="space-y-3">
+                <button data-difficulty="easy" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-green-600">Легкий (4-6 букв)</button>
+                <button data-difficulty="medium" class="w-full bg-yellow-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-yellow-600">Средний (7-9 букв)</button>
+                <button data-difficulty="hard" class="w-full bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-red-600">Сложный (10+ букв)</button>
+                <button data-difficulty="random" class="w-full bg-purple-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-purple-600">Бог рандома</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Меню "Продолжить игру?" -->
+    <div id="continue-game-menu" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div id="continue-game-content" class="bg-white rounded-2xl p-6 sm:p-8 text-center shadow-2xl w-full max-w-sm">
+            <h2 class="text-2xl sm:text-3xl font-bold mb-4">Найдена незаконченная игра</h2>
+            <p class="text-gray-600 mb-6">Хотите продолжить?</p>
+            <div class="flex gap-4">
+                <button id="start-new-btn" class="w-full bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-xl text-lg hover:bg-gray-400">Начать заново</button>
+                <button id="continue-btn" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-green-600">Продолжить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Обучение -->
+    <div id="tutorial-overlay" class="fixed inset-0 bg-black bg-opacity-75 z-40 hidden flex flex-col items-center justify-center text-white p-4">
+        <div id="tutorial-text" class="text-xl sm:text-2xl font-bold text-center mb-4"></div>
+        <div id="tutorial-hand" class="text-5xl absolute hand-animation">👇</div>
+        <button id="tutorial-skip" class="absolute top-4 right-4 bg-white/20 px-4 py-2 rounded-lg">Пропустить</button>
+    </div>
+
+    <div id="app-container" class="w-full max-w-md mx-auto flex flex-col h-full transition-all duration-300">
+        <header class="flex justify-between items-center mb-2 flex-shrink-0 w-full">
+            <button id="menu-button" class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center"><svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+            <div class="flex bg-gray-200 rounded-lg p-1 text-xs sm:text-sm font-medium">
+                <div class="px-2 sm:px-4 py-1 rounded-md"><span class="opacity-70">СЕРИЯ</span> <span id="current-streak" class="ml-1">0</span></div>
+                <div class="relative bg-[#6ABD7A] text-white px-2 sm:px-4 py-1 rounded-md"><span class="absolute -top-2 left-1/2 -translate-x-1/2">👑</span><span>РЕКОРД</span> <span id="best-streak" class="ml-1">0</span></div>
+            </div>
+            <div class="w-10 h-10"></div>
+        </header>
+
+        <main class="w-full flex flex-col items-center flex-grow justify-around min-h-0">
+            <div id="hangman-container" class="w-full max-w-[280px] sm:max-w-xs aspect-square relative"><canvas id="hangman-canvas" class="w-full h-full"></canvas></div>
+            <div id="word-container" class="flex flex-wrap justify-center gap-x-1 gap-y-1 my-2 text-2xl sm:text-3xl font-bold tracking-wider"></div>
+            <div id="keyboard" class="w-full flex flex-col items-center gap-1"></div>
+            <div class="mt-2">
+                <button id="hint-button" class="w-12 h-12 sm:w-14 sm:h-14 bg-[#F9A825] rounded-full flex items-center justify-center shadow-lg relative">
+                    <div id="hint-icon-container"></div>
+                    <span id="hint-count" class="absolute -top-1 -right-1 bg-green-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#FDFBFA]"></span>
+                </button>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Плейсхолдер для баннерной рекламы -->
+    <div id="banner-placeholder" class="w-full flex-shrink-0" style="height: 0px;"></div>
+
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none modal-overlay">
+        <div id="modal-content" class="bg-white rounded-2xl p-6 sm:p-8 text-center shadow-2xl w-full max-w-sm transform scale-95 modal-content">
+            <h2 id="modal-title" class="text-2xl sm:text-3xl font-bold mb-2"></h2>
+            <p id="modal-word" class="text-lg sm:text-xl text-gray-600 mb-6">Слово было: <span class="font-bold text-gray-800"></span></p>
+            <button id="play-again-button" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-green-600">Играть снова</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM элементы ---
+        const elements = {
+            appContainer: document.getElementById('app-container'),
+            bannerPlaceholder: document.getElementById('banner-placeholder'),
+            wordContainer: document.getElementById('word-container'),
+            keyboardContainer: document.getElementById('keyboard'),
+            canvas: document.getElementById('hangman-canvas'),
+            currentStreakEl: document.getElementById('current-streak'),
+            bestStreakEl: document.getElementById('best-streak'),
+            hintButton: document.getElementById('hint-button'),
+            hintCountEl: document.getElementById('hint-count'),
+            hintIconContainer: document.getElementById('hint-icon-container'),
+            modal: document.getElementById('modal'),
+            modalContent: document.getElementById('modal-content'),
+            modalTitle: document.getElementById('modal-title'),
+            modalWord: document.querySelector('#modal-word span'),
+            playAgainButton: document.getElementById('play-again-button'),
+            difficultyMenu: document.getElementById('difficulty-menu'),
+            closeMenuButton: document.getElementById('close-menu-button'),
+            menuButton: document.getElementById('menu-button'),
+            continueGameMenu: document.getElementById('continue-game-menu'),
+            continueBtn: document.getElementById('continue-btn'),
+            startNewBtn: document.getElementById('start-new-btn'),
+            tutorialOverlay: document.getElementById('tutorial-overlay'),
+            tutorialText: document.getElementById('tutorial-text'),
+            tutorialHand: document.getElementById('tutorial-hand'),
+            tutorialSkip: document.getElementById('tutorial-skip'),
+        };
+        const ctx = elements.canvas.getContext('2d');
+
+        // --- Игровые переменные ---
+        const words = { "4": ["БАБА", "БАЗА", "БАНК"], "5": ["АББАТ", "АБЗАЦ", "АБОРТ"], "6": ["АБАЖУР", "АБСУРД", "АВАРИЯ"], "7": ["АВТОБУС", "АВТОМАТ"], "8": ["АКАДЕМИЯ", "БОЛЬНИЦА"], "9": ["АТМОСФЕРА", "ВЫРАЖЕНИЕ"], "10": ["АВТОМОБИЛЬ", "АКТИВНОСТЬ"], "11": ["БОЛЬШИНСТВО", "ВОЗВРАЩЕНИЕ"] };
+        const keyboardLayout = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
+        let currentWord = '', guessedLetters = [], wrongGuesses = 0, currentStreak = 0, bestStreak = 0;
+        const maxWrongGuesses = 6, totalFreeHints = 3;
+        let hintsLeft = 0, gameActive = false, difficulty = 'easy', gamesPlayedSinceAd = 0;
+        const videoIconSVG = `<svg class="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`;
+        const hintIconSVG = `<svg class="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>`;
+
+        // --- VK Bridge ---
+        const vk = {
+            init: () => vkBridge.send('VKWebAppInit'),
+            getStorage: async (keys) => {
+                try {
+                    const data = await vkBridge.send('VKWebAppStorageGet', { keys });
+                    return data.keys.reduce((acc, item) => {
+                        acc[item.key] = item.value ? JSON.parse(item.value) : null;
+                        return acc;
+                    }, {});
+                } catch (error) { console.error('VK Storage Get Error:', error); return {}; }
+            },
+            setStorage: (key, value) => {
+                vkBridge.send('VKWebAppStorageSet', { key, value: JSON.stringify(value) });
+            },
+            showBanner: () => {
+                vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' })
+                    .then(data => console.log('Banner shown', data))
+                    .catch(error => console.error('Banner error', error));
+            },
+            showReward: async () => {
+                try {
+                    const data = await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' });
+                    return data.result; // true если успешно, false если нет
+                } catch (error) { console.error('Reward Ad Error:', error); return false; }
+            },
+            showInterstitial: () => {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .catch(error => console.error('Interstitial Ad Error:', error));
+            }
+        };
+
+        // --- Функции отрисовки ---
+        const draw = {
+            gallows: () => { /* ... код без изменений ... */ },
+            hangman: () => { /* ... код без изменений ... */ },
+            resizeCanvas: () => { /* ... код без изменений ... */ }
+        };
+        // Копируем код отрисовки из предыдущей версии, так как он не менялся
+        draw.gallows = () => { ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height); ctx.lineCap = 'round'; const w = elements.canvas.width, h = elements.canvas.height; const gradient = ctx.createLinearGradient(0, h, 0, 0); gradient.addColorStop(0, "#A96E49"); gradient.addColorStop(0.1, "#A96E49"); gradient.addColorStop(0.15, "#E54B4B"); gradient.addColorStop(1, "#F16A4C"); ctx.strokeStyle = gradient; ctx.lineWidth = w * 0.03; ctx.beginPath(); ctx.moveTo(w * 0.1, h * 0.95); ctx.lineTo(w * 0.9, h * 0.95); ctx.stroke(); ctx.beginPath(); ctx.moveTo(w * 0.25, h * 0.95); ctx.lineTo(w * 0.25, h * 0.1); ctx.lineTo(w * 0.65, h * 0.1); ctx.stroke(); ctx.strokeStyle = '#A96E49'; ctx.lineWidth = w * 0.015; ctx.beginPath(); ctx.moveTo(w * 0.65, h * 0.1); ctx.lineTo(w * 0.65, h * 0.2); ctx.stroke(); };
+        draw.hangman = () => { const w = elements.canvas.width, h = elements.canvas.height, centerX = w * 0.65, headY = h * 0.25, radius = w * 0.05; ctx.strokeStyle = '#333333'; ctx.lineWidth = w * 0.02; ctx.beginPath(); if (wrongGuesses > 0) { ctx.arc(centerX, headY, radius, 0, Math.PI * 2); } if (wrongGuesses > 1) { ctx.moveTo(centerX, headY + radius); ctx.lineTo(centerX, headY + radius + h * 0.2); } if (wrongGuesses > 2) { ctx.moveTo(centerX, headY + radius + h * 0.05); ctx.lineTo(centerX - w * 0.1, headY + radius + h * 0.15); } if (wrongGuesses > 3) { ctx.moveTo(centerX, headY + radius + h * 0.05); ctx.lineTo(centerX + w * 0.1, headY + radius + h * 0.15); } if (wrongGuesses > 4) { ctx.moveTo(centerX, headY + radius + h * 0.2); ctx.lineTo(centerX - w * 0.1, headY + radius + h * 0.3); } if (wrongGuesses > 5) { ctx.moveTo(centerX, headY + radius + h * 0.2); ctx.lineTo(centerX + w * 0.1, headY + radius + h * 0.3); } ctx.stroke(); };
+        draw.resizeCanvas = () => { const container = elements.canvas.parentElement; const size = Math.min(container.clientWidth, container.clientHeight); elements.canvas.width = size; elements.canvas.height = size; draw.gallows(); draw.hangman(); };
+
+
+        // --- Игровые функции ---
+        const game = {
+            start: async () => {
+                await vk.init();
+                vk.showBanner();
+
+                const storedData = await vk.getStorage(['stats', 'saved_game', 'hints_used', 'games_played']);
+                if (storedData.stats) {
+                    currentStreak = storedData.stats.currentStreak || 0;
+                    bestStreak = storedData.stats.bestStreak || 0;
+                    ui.updateStats();
+                }
+                hintsLeft = totalFreeHints - (storedData.hints_used || 0);
+                gamesPlayedSinceAd = storedData.games_played || 0;
+
+                if (storedData.saved_game) {
+                    ui.showContinueMenu(storedData.saved_game);
+                } else if (localStorage.getItem('hangman_tutorial_shown')) {
+                    ui.showDifficultyMenu();
+                } else {
+                    tutorial.start();
+                }
+            },
+            init: (selectedDifficulty, savedState = null) => {
+                difficulty = selectedDifficulty;
+                gameActive = true;
+                elements.difficultyMenu.classList.add('hidden', 'opacity-0');
+                
+                if (savedState) {
+                    currentWord = savedState.word;
+                    guessedLetters = savedState.guessed;
+                    wrongGuesses = savedState.wrong;
+                } else {
+                    wrongGuesses = 0; guessedLetters = [];
+                    let wordPool = [];
+                    if (difficulty === 'easy') wordPool = [...words["4"], ...words["5"], ...words["6"]];
+                    else if (difficulty === 'medium') wordPool = [...words["7"], ...words["8"], ...words["9"]];
+                    else if (difficulty === 'hard') wordPool = [...words["10"], ...words["11"]];
+                    else wordPool = Object.values(words).flat();
+                    currentWord = wordPool[Math.floor(Math.random() * wordPool.length)];
+                }
+                
+                elements.modal.classList.add('opacity-0', 'pointer-events-none');
+                ui.displayWord(); ui.createKeyboard(); draw.resizeCanvas(); ui.updateStats(); ui.updateHintCounter();
+                elements.hintButton.disabled = false; elements.hintButton.classList.remove('opacity-50');
+            },
+            handleGuess: (letter) => {
+                if (!gameActive || guessedLetters.includes(letter)) return;
+                guessedLetters.push(letter);
+                const button = document.getElementById(`key-${letter}`);
+                button.disabled = true;
+                if (currentWord.includes(letter)) {
+                    button.className = button.className.replace(/bg-gray-200|hover:bg-gray-300/g, 'bg-[#6ABD7A] text-white');
+                    ui.displayWord();
+                } else {
+                    wrongGuesses++;
+                    button.className = button.className.replace(/bg-gray-200|hover:bg-gray-300/g, 'bg-gray-400 text-gray-200 line-through');
+                    draw.hangman();
+                    if (wrongGuesses >= maxWrongGuesses) game.end(false);
+                }
+                game.saveState();
+            },
+            end: (isWin) => {
+                gameActive = false;
+                vk.setStorage('saved_game', null); // Очищаем сохраненную игру
+                gamesPlayedSinceAd++;
+                vk.setStorage('games_played', gamesPlayedSinceAd);
+
+                setTimeout(() => {
+                    elements.modal.classList.remove('opacity-0', 'pointer-events-none');
+                    elements.modalContent.classList.remove('scale-95');
+                    if (isWin) {
+                        elements.modalTitle.textContent = 'Вы победили!';
+                        elements.modalTitle.className = 'text-2xl sm:text-3xl font-bold mb-2 text-green-500';
+                        elements.playAgainButton.className = 'w-full bg-green-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-green-600';
+                        currentStreak++;
+                        if (currentStreak > bestStreak) bestStreak = currentStreak;
+                    } else {
+                        elements.modalTitle.textContent = 'Вы проиграли!';
+                        elements.modalTitle.className = 'text-2xl sm:text-3xl font-bold mb-2 text-red-500';
+                        elements.playAgainButton.className = 'w-full bg-red-500 text-white font-bold py-3 px-4 rounded-xl text-lg hover:bg-red-600';
+                        currentStreak = 0;
+                    }
+                    elements.modalWord.textContent = currentWord;
+                    ui.updateStats();
+                    vk.setStorage('stats', { currentStreak, bestStreak });
+
+                    if (gamesPlayedSinceAd >= 3) {
+                        vk.showInterstitial();
+                        gamesPlayedSinceAd = 0;
+                        vk.setStorage('games_played', 0);
+                    }
+                }, 500);
+            },
+            saveState: () => {
+                if (!gameActive) return;
+                const state = {
+                    word: currentWord,
+                    guessed: guessedLetters,
+                    wrong: wrongGuesses,
+                    difficulty: difficulty
+                };
+                vk.setStorage('saved_game', state);
+            }
+        };
+
+        // --- UI функции ---
+        const ui = {
+            displayWord: () => { /* ... код без изменений ... */ },
+            createKeyboard: () => { /* ... код без изменений ... */ },
+            updateStats: () => { /* ... код без изменений ... */ },
+            updateHintCounter: () => {
+                if (hintsLeft > 0) {
+                    elements.hintCountEl.textContent = hintsLeft;
+                    elements.hintCountEl.classList.remove('hidden');
+                    elements.hintIconContainer.innerHTML = hintIconSVG;
+                } else {
+                    elements.hintCountEl.classList.add('hidden');
+                    elements.hintIconContainer.innerHTML = videoIconSVG;
+                }
+            },
+            useHint: async () => {
+                if (!gameActive) return;
+                if (hintsLeft > 0) {
+                    const unguessed = currentWord.split('').filter(l => !guessedLetters.includes(l));
+                    if (unguessed.length > 0) {
+                        game.handleGuess(unguessed[Math.floor(Math.random() * unguessed.length)]);
+                        hintsLeft--;
+                        vk.setStorage('hints_used', totalFreeHints - hintsLeft);
+                        ui.updateHintCounter();
+                    }
+                } else {
+                    const adWatched = await vk.showReward();
+                    if (adWatched) {
+                        const unguessed = currentWord.split('').filter(l => !guessedLetters.includes(l));
+                        if (unguessed.length > 0) {
+                            game.handleGuess(unguessed[Math.floor(Math.random() * unguessed.length)]);
+                        }
+                    }
+                }
+            },
+            showDifficultyMenu: () => {
+                gameActive = false;
+                elements.difficultyMenu.classList.remove('hidden', 'opacity-0');
+            },
+            closeMenu: () => {
+                elements.difficultyMenu.classList.add('hidden', 'opacity-0');
+                if (currentWord) gameActive = true;
+            },
+            showContinueMenu: (savedGame) => {
+                elements.continueGameMenu.classList.remove('hidden');
+                elements.continueBtn.onclick = () => {
+                    elements.continueGameMenu.classList.add('hidden');
+                    game.init(savedGame.difficulty, savedGame);
+                };
+                elements.startNewBtn.onclick = () => {
+                    elements.continueGameMenu.classList.add('hidden');
+                    vk.setStorage('saved_game', null);
+                    ui.showDifficultyMenu();
+                };
+            }
+        };
+        // Копируем код UI из предыдущей версии
+        ui.displayWord = () => { const letterWidth = window.innerWidth < 360 ? 'w-5' : 'w-6 sm:w-7'; const letterHeight = window.innerWidth < 360 ? 'h-8' : 'h-10 sm:h-12'; elements.wordContainer.innerHTML = currentWord.split('').map(letter => `<div class="flex flex-col items-center justify-end ${letterHeight}"><span class="text-black">${guessedLetters.includes(letter) ? letter : '&nbsp;'}</span><div class="${letterWidth} h-1 sm:h-1.5 bg-gray-800 mt-1"></div></div>`).join(''); if (gameActive && currentWord && currentWord.split('').every(l => guessedLetters.includes(l))) game.end(true); };
+        ui.createKeyboard = () => { elements.keyboardContainer.innerHTML = ''; const isSmallScreen = window.innerWidth < 360 || window.innerHeight < 640; keyboardLayout.forEach(row => { const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center gap-1'; row.split('').forEach(key => { const button = document.createElement('button'); button.textContent = key; button.id = `key-${key}`; button.className = isSmallScreen ? 'h-8 w-[6.5vw] text-sm font-medium rounded bg-gray-200' : 'h-9 w-7 sm:h-10 sm:w-8 text-base sm:text-lg font-medium rounded-md bg-gray-200 hover:bg-gray-300'; button.onclick = () => game.handleGuess(key); if (guessedLetters.includes(key)) { button.disabled = true; button.className += currentWord.includes(key) ? ' bg-[#6ABD7A] text-white' : ' bg-gray-400 text-gray-200 line-through'; } rowDiv.appendChild(button); }); elements.keyboardContainer.appendChild(rowDiv); }); };
+        ui.updateStats = () => { elements.currentStreakEl.textContent = currentStreak; elements.bestStreakEl.textContent = bestStreak; };
+
+        // --- Обучение ---
+        const tutorial = { /* ... код без изменений ... */ };
+        // Копируем код обучения
+        tutorial.steps = [{ text: "Угадайте слово по буквам", target: '#word-container' }, { text: "Нажимайте на буквы, чтобы угадать", target: '#keyboard' }, { text: "За каждую ошибку будет рисоваться человечек", target: '#hangman-canvas' }, { text: "Используйте подсказки, если застряли", target: '#hint-button' }]; tutorial.currentStep = 0; tutorial.start = () => { elements.difficultyMenu.classList.add('hidden', 'opacity-0'); game.init('easy'); gameActive = false; elements.tutorialOverlay.classList.remove('hidden'); tutorial.showStep(); }; tutorial.showStep = () => { if (tutorial.currentStep >= tutorial.steps.length) { tutorial.end(); return; } const step = tutorial.steps[tutorial.currentStep]; const targetElement = document.querySelector(step.target); const rect = targetElement.getBoundingClientRect(); elements.tutorialText.textContent = step.text; elements.tutorialHand.style.top = `${rect.bottom}px`; elements.tutorialHand.style.left = `${rect.left + rect.width / 2 - 15}px`; tutorial.currentStep++; }; tutorial.end = () => { elements.tutorialOverlay.classList.add('hidden'); localStorage.setItem('hangman_tutorial_shown', 'true'); gameActive = true; elements.playAgainButton.click(); };
+
+        // --- Обработчики событий ---
+        window.addEventListener('resize', () => { draw.resizeCanvas(); ui.createKeyboard(); });
+        elements.playAgainButton.addEventListener('click', () => {
+            elements.modal.classList.add('opacity-0', 'pointer-events-none');
+            ui.showDifficultyMenu();
+        });
+        elements.hintButton.addEventListener('click', ui.useHint);
+        elements.difficultyMenu.addEventListener('click', (e) => {
+            if (e.target.matches('button[data-difficulty]')) {
+                game.init(e.target.dataset.difficulty);
+            }
+        });
+        elements.closeMenuButton.addEventListener('click', ui.closeMenu);
+        elements.menuButton.addEventListener('click', ui.showDifficultyMenu);
+        elements.tutorialOverlay.addEventListener('click', tutorial.showStep);
+        elements.tutorialSkip.addEventListener('click', (e) => { e.stopPropagation(); tutorial.end(); });
+
+        // Слушаем события видимости для сохранения игры
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                game.saveState();
+            }
+        });
+        
+        // Слушаем события баннера для адаптации
+        vkBridge.subscribe((e) => {
+            if (e.detail.type === 'VKWebAppBannerAdUpdated') {
+                const bannerHeight = e.detail.data.height;
+                elements.appContainer.style.paddingBottom = `${bannerHeight}px`;
+                elements.bannerPlaceholder.style.height = `${bannerHeight}px`;
+            }
+        });
+
+        // --- Запуск ---
+        game.start();
+    </script>
+</body>
+</html>
