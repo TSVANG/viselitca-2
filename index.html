@@ -256,7 +256,7 @@
                 <div id="tut-k-В" class="w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">В</div>
             </div>
 
-            <button onclick="tutorial.end()" id="tut-btn-close" class="w-full drawn-btn marker-green font-bold py-2 px-4 text-2xl hide">Понятно, Играть!</button>
+            <button onclick="tutorial.end()" id="tut-btn-close" class="w-full drawn-btn marker-green font-bold py-2 px-4 text-2xl">Понятно, Играть!</button>
         </div>
     </div>
 
@@ -276,7 +276,7 @@
 
         // База слов 
         const words = { 
-            "4": ["БАБА", "БАЗА", "ВРАЧ", "ВХОД", "ЗОНА", "ИГРА", "МЕТР", "МИНА", "РЕКА", "РИСК","ТЕЛО", "ТЕМП","ЧУДО", "ШАНС"],
+            "4": ["БАБА", "БАЗА", "ВРАЧ", "МИНА", "РЕКА"],
             "5": ["АББАТ", "АБЗАЦ", "АБОРТ", "АВАНС"],
             "6": ["ОХРАНА", "ОЦЕНКА", "ОШИБКА", "ПАЛАТА","СУДЬБА", "СУИЦИД", "ТАЛАНТ","ЦЕНЗОР", "ЧТЕНИЕ", "ШАЙТАН", "ЯНВАРЬ"],
             "7": ["АВТОБУС","ДЕСЯТОК", "ДЕТСТВО", "ДОГОВОР", "ДЫХАНИЕ", "ЕДИНИЦА","ЭЛЕМЕНТ", "ЭНЕРГИЯ", "ЯВЛЕНИЕ"],
@@ -288,10 +288,9 @@
         
         const keyboardLayout = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
         
-        // Стартовый капитал изменен на 5000
         let pData = { coins: 5000, score: 0, stats: { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3, erasers: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', adChests: 0, adChestDate: '' };
         let currentWord = '', guessedLetters = [], wrongGuesses = 0, difficulty = 'easy', isPvp = false, gameActive = false, statsBeforeGame = {};
-        const MAX_ERRORS = 8; // Новое количество частей виселицы
+        const MAX_ERRORS = 8; // Количество частей виселицы
         
         // --- VK BRIDGE ВЗАИМОДЕЙСТВИЕ ---
         const vk = {
@@ -301,9 +300,11 @@
                     new Promise(res => {
                         vkBridge.send('VKWebAppStorageGet', { keys: ['pData'] }).then(d => { 
                             if (d.keys && d.keys[0].value) {
-                                // Бережно сливаем данные, сохраняя новые поля по умолчанию
                                 const loadedData = JSON.parse(d.keys[0].value);
-                                pData = { ...pData, ...loadedData, stats: { ...pData.stats, ...(loadedData.stats || {}) } };
+                                // Безопасное слияние данных с защитой от пустых объектов
+                                pData = { ...pData, ...loadedData };
+                                pData.stats = { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0, ...(loadedData.stats || {}) };
+                                if(pData.erasers === undefined) pData.erasers = 3;
                             }
                             res(); 
                         }).catch(() => res());
@@ -328,12 +329,15 @@
             save: () => { try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){} }
         };
 
+        // Исправление бага с сохранениями при сворачивании игры
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') vk.save(); });
+
         // --- ЛОГИКА ИГРЫ ---
         const game = {
             init: (diff) => {
                 difficulty = diff; isPvp = false; gameActive = true;
                 wrongGuesses = 0; guessedLetters = [];
-                statsBeforeGame = JSON.parse(JSON.stringify(pData.stats)); // Запоминаем стату до игры
+                statsBeforeGame = JSON.parse(JSON.stringify(pData.stats)); 
                 
                 ui.closeAllModals();
                 elements.mainMenu.classList.add('hide'); elements.appContainer.classList.remove('hide');
@@ -349,6 +353,7 @@
                 
                 currentWord = pool[Math.floor(Math.random() * pool.length)];
                 game.setupUI();
+                vk.save(); // Сохраняем состояние при старте
             },
             setupUI: () => {
                 const labels = {'easy': "ЛЕГКИЙ", 'medium': "СРЕДНИЙ", 'hard': "СЛОЖНЫЙ", 'impossible': "НЕВОЗМОЖНЫЙ", 'random': "РАНДОМ"};
@@ -396,7 +401,6 @@
                 let c = 0, s = 0;
                 
                 if (isWin) {
-                    // Новая математика для 8 ошибок: 8 - wrongGuesses
                     c = currentWord.length * 2 + (MAX_ERRORS - wrongGuesses) * 3;
                     s = currentWord.length * 5;
                     if(difficulty === 'daily') { c*=3; s*=3; }
@@ -407,7 +411,6 @@
                 vk.save(); ui.updateCoins();
 
                 setTimeout(() => {
-                    // Проверяем, открылся ли новый уровень (переход с 9 на 10)
                     let newlyUnlocked = null;
                     if (!isPvp && difficulty !== 'daily' && isWin) {
                         if (difficulty === 'easy' && statsBeforeGame.easy < 10 && pData.stats.easy >= 10) newlyUnlocked = 'medium';
@@ -452,49 +455,48 @@
                 context.clearRect(0, 0, w, h); 
                 context.lineCap = 'round'; context.lineJoin = 'round';
                 
-                // Стиль фломастера
                 context.strokeStyle = '#1e293b'; 
                 context.lineWidth = w * 0.035; 
                 context.beginPath();
                 
                 const cX = w * 0.65, hY = h * 0.35, r = w * 0.06;
 
-                // 8 Шагов отрисовки
-                if (errors > 0) { // 1. Столб и основание
+                if (errors > 0) { // 1
                     context.moveTo(w * 0.1, h * 0.95); context.lineTo(w * 0.9, h * 0.95);
                     context.moveTo(w * 0.3, h * 0.95); context.lineTo(w * 0.3, h * 0.1);
                 }
-                if (errors > 1) { // 2. Стойка сверху
+                if (errors > 1) { // 2
                     context.moveTo(w * 0.3, h * 0.1); context.lineTo(w * 0.65, h * 0.1);
-                    context.moveTo(w * 0.3, h * 0.25); context.lineTo(w * 0.45, h * 0.1); // диагональ
+                    context.moveTo(w * 0.3, h * 0.25); context.lineTo(w * 0.45, h * 0.1);
                 }
-                if (errors > 2) { // 3. Веревка с головой
+                if (errors > 2) { // 3
                     context.moveTo(w * 0.65, h * 0.1); context.lineTo(w * 0.65, hY - r);
-                    context.stroke(); context.beginPath(); // прерываем линию для круга
+                    context.stroke(); context.beginPath(); 
                     context.arc(cX, hY, r, 0, Math.PI * 2);
                 }
-                if (errors > 3) { // 4. Туловище
+                if (errors > 3) { // 4
                     context.moveTo(cX, hY + r); context.lineTo(cX, hY + r + h * 0.25);
                 }
-                if (errors > 4) { // 5. Левая рука
+                if (errors > 4) { // 5
                     context.moveTo(cX, hY + r + h * 0.05); context.lineTo(cX - w * 0.12, hY + r + h * 0.15);
                 }
-                if (errors > 5) { // 6. Правая рука
+                if (errors > 5) { // 6
                     context.moveTo(cX, hY + r + h * 0.05); context.lineTo(cX + w * 0.12, hY + r + h * 0.15);
                 }
-                if (errors > 6) { // 7. Левая нога
+                if (errors > 6) { // 7
                     context.moveTo(cX, hY + r + h * 0.25); context.lineTo(cX - w * 0.1, hY + r + h * 0.4);
                 }
-                if (errors > 7) { // 8. Правая нога
+                if (errors > 7) { // 8
                     context.moveTo(cX, hY + r + h * 0.25); context.lineTo(cX + w * 0.1, hY + r + h * 0.4);
                 }
                 context.stroke();
 
                 // Отрисовка скина
                 if (errors > 2 && pData.equippedSkin > 0 && context === ctx) {
-                    const skinMap = {0:'👤', 1:'🧢', 2:'🎩', 3:'👑', 4:'🕶️', 5:'🎀', 6:'😎', 7:'🧣', 8:'🦄', 9:'👽'};
+                    const skinMap = {0:'👤', 1:'🧢', 2:'🎩', 3:'👑', 4:'🕶️', 5:'🎀', 6:'😎', 9:'👽'};
                     context.font = `${r*2.5}px Arial`; context.textAlign = 'center'; context.textBaseline = 'middle';
-                    const offset = [4,6].includes(pData.equippedSkin) ? 0 : -r; 
+                    // Инопланетянин(9) и очки(4,6) прикрепляются на лицо (offset 0), шапки выше (offset -r)
+                    const offset = [4, 6, 9].includes(pData.equippedSkin) ? 0 : -r; 
                     context.fillText(skinMap[pData.equippedSkin], cX, hY + offset);
                 }
             }
@@ -522,7 +524,7 @@
                     const btn = document.getElementById(`btn-lvl-${id}`); const lck = document.getElementById(`lock-${id}`);
                     if (req >= 10) { 
                         btn.classList.remove('locked-level', 'flex', 'justify-between'); 
-                        btn.classList.add('block', 'text-center'); // Центрируем после разблокировки
+                        btn.classList.add('block', 'text-center'); 
                         lck.classList.add('hide'); 
                         btn.innerHTML = btn.getAttribute('data-name');
                         btn.onclick = () => game.init(id); 
@@ -577,13 +579,13 @@
                 ['skins','boosts','chest'].forEach(t => {
                     document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-2 text-blue-600 border-r-4 border-slate-800 bg-blue-50' : 'flex-1 py-2 text-slate-500 border-r-4 border-slate-800 bg-white';
                 });
-                document.getElementById('tab-chest').classList.remove('border-r-4'); // убираем правую границу у последнего
+                document.getElementById('tab-chest').classList.remove('border-r-4');
                 const c = document.getElementById('shop-content'); c.innerHTML = '';
                 
                 if(tab === 'skins') {
                     const grid = document.createElement('div'); grid.className = 'grid grid-cols-3 gap-3';
-                    const skinMap = {0:['👤',0], 1:['🧢',200], 2:['🎩',300], 3:['👑',1000], 4:['🕶️',250], 5:['🎀',250], 6:['😎',400], 7:['🧣',300], 8:['🦄',800], 9:['👽',900]};
-                    for(let i=0; i<=9; i++) {
+                    const skinMap = {0:['👤',0], 1:['🧢',200], 2:['🎩',300], 3:['👑',1000], 4:['🕶️',250], 5:['🎀',250], 6:['😎',400], 9:['👽',900]};
+                    for(let i of [0, 1, 2, 3, 4, 5, 6, 9]) {
                         const owns = pData.skins.includes(i) || i === 0; const eq = pData.equippedSkin === i; const price = skinMap[i][1];
                         grid.innerHTML += `<div class="drawn-box bg-white p-2 flex flex-col items-center skin-card ${eq?'border-blue-600 bg-blue-50':''}" onclick="shop.handleSkin(${i}, ${price})">
                             <span class="text-5xl my-2">${skinMap[i][0]}</span>
@@ -642,12 +644,17 @@
             start: async () => {
                 tutorial.active = true;
                 ui.openModal('tutorial-modal');
+                document.getElementById('tut-btn-close').classList.remove('hide'); // Кнопка видна сразу
                 
                 const c = document.getElementById('tut-canvas'); 
                 const s = Math.min(c.parentElement.clientWidth, c.parentElement.clientHeight, 200);
                 c.width = s; c.height = s;
                 
-                const setWord = (str) => { document.getElementById('tut-word').innerHTML = str.split('').map(l => `<div class="flex flex-col items-center justify-end h-10 w-8"><span class="leading-none text-slate-900">${l}</span><div class="w-full h-1.5 bg-slate-800 mt-1 rounded-full"></div></div>`).join(''); };
+                const setWord = (str) => { 
+                    document.getElementById('tut-word').innerHTML = str.split('').map(l => 
+                        `<div class="flex flex-col items-center justify-end h-10 w-8"><span class="leading-none text-slate-900">${l === ' ' ? '&nbsp;' : l}</span><div class="w-full h-1.5 bg-slate-800 mt-1 rounded-full"></div></div>`
+                    ).join(''); 
+                };
                 const pressKey = (id, type) => {
                     const k = document.getElementById(`tut-k-${id}`);
                     k.classList.add('anim-press');
@@ -661,24 +668,34 @@
                 
                 // Сценарий
                 while(tutorial.active) {
-                    draw.hangman(tutCtx, 0); setWord('&nbsp;&nbsp;&nbsp;&nbsp;');
+                    // Кадр 1: Сброс
+                    draw.hangman(tutCtx, 0); 
+                    setWord('    '); // Пустое место
                     document.querySelectorAll('[id^="tut-k-"]').forEach(k => k.className = 'w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1 text-slate-800');
+                    txt.textContent = "Угадывай буквы в слове!"; 
+                    await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
                     
-                    txt.textContent = "Угадывай буквы в слове!"; await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
+                    // Кадр 2: Верно
+                    pressKey('А', 'correct'); 
+                    await new Promise(r => setTimeout(r, 500));
+                    setWord('   А');
+                    txt.textContent = "Верно! Буква на месте."; 
+                    await new Promise(r => setTimeout(r, 2500)); if(!tutorial.active) break;
                     
-                    pressKey('А', 'correct'); await new Promise(r => setTimeout(r, 500));
-                    setWord('&nbsp;&nbsp;&nbsp;А');
-                    txt.textContent = "Верно! Буква на месте."; await new Promise(r => setTimeout(r, 2500)); if(!tutorial.active) break;
+                    // Кадр 3: Ошибка
+                    txt.textContent = "А если ошибиться?"; 
+                    await new Promise(r => setTimeout(r, 1500)); if(!tutorial.active) break;
+                    pressKey('Б', 'wrong'); 
+                    await new Promise(r => setTimeout(r, 500));
+                    draw.hangman(tutCtx, 4); // Рисуем сразу до туловища, чтобы было видно
+                    txt.textContent = "За ошибку рисуем деталь..."; 
+                    await new Promise(r => setTimeout(r, 2500)); if(!tutorial.active) break;
                     
-                    txt.textContent = "А если ошибиться?"; await new Promise(r => setTimeout(r, 1500)); if(!tutorial.active) break;
-                    pressKey('Б', 'wrong'); await new Promise(r => setTimeout(r, 500));
-                    draw.hangman(tutCtx, 1);
-                    txt.textContent = "Рисуется виселица!"; await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
-                    
-                    pressKey('В', 'wrong'); await new Promise(r => setTimeout(r, 500));
-                    draw.hangman(tutCtx, 2);
+                    // Кадр 4: Финал
+                    pressKey('В', 'wrong'); 
+                    await new Promise(r => setTimeout(r, 500));
+                    draw.hangman(tutCtx, 8); // Рисуем полностью
                     txt.textContent = "8 ошибок — и ты проиграл!";
-                    document.getElementById('tut-btn-close').classList.remove('hide');
                     await new Promise(r => setTimeout(r, 4000));
                 }
             },
