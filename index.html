@@ -143,7 +143,7 @@
 
         <main class="w-full flex flex-col items-center flex-grow justify-around min-h-0">
             <div id="hangman-container" class="w-full max-w-[240px] sm:max-w-xs aspect-square relative drawn-box bg-white/50"><canvas id="hangman-canvas" class="w-full h-full"></canvas></div>
-            <div id="word-container" class="flex flex-wrap justify-center gap-x-2 gap-y-2 my-2 text-4xl font-bold tracking-widest uppercase"></div>
+            <div id="word-container" class="flex flex-wrap justify-center gap-x-1 sm:gap-x-1.5 gap-y-2 my-2 text-4xl font-bold tracking-widest uppercase"></div>
             <div id="keyboard" class="w-full flex flex-col items-center gap-2 mt-2 font-bold uppercase"></div>
             
             <div class="mt-4 w-full flex justify-center gap-6 px-4">
@@ -162,6 +162,20 @@
     </div>
 
     <!-- МОДАЛКИ -->
+
+    <!-- Продолжение игры (Синхронизация) -->
+    <div id="modal-continue" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-4 z-[55] hide modal-overlay backdrop-blur-md">
+        <div class="drawn-box p-8 text-center w-full max-w-sm modal-content bg-[#fdf6e3]">
+            <span class="text-6xl block mb-2">💾</span>
+            <h2 class="text-4xl font-bold mb-2 text-slate-900">Сохранение</h2>
+            <p class="text-xl text-slate-700 mb-6">Найдена незаконченная игра. Хотите продолжить?</p>
+            
+            <div class="flex flex-col gap-3 text-2xl">
+                <button onclick="game.resumeSaved()" class="w-full drawn-btn marker-green font-bold py-2 px-4">Продолжить</button>
+                <button onclick="game.discardSaved()" class="w-full drawn-btn marker-red font-bold py-2 px-4">Начать заново</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Финал уровня -->
     <div id="modal-end" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hide modal-overlay backdrop-blur-sm">
@@ -196,7 +210,7 @@
         </div>
     </div>
 
-    <!-- Магазин -->
+    <!-- Магазин (Скины и Бусты) -->
     <div id="modal-shop" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hide modal-overlay backdrop-blur-sm">
         <div class="drawn-box w-full max-w-md h-[80vh] flex flex-col overflow-hidden modal-content bg-[#fdf6e3] relative">
             <button onclick="ui.closeModal('modal-shop')" class="absolute top-2 right-2 text-2xl pb-1 w-10 h-10 drawn-btn marker-red bg-white z-10">✖</button>
@@ -207,8 +221,7 @@
             
             <div class="flex border-b-4 border-slate-800 text-xl font-bold bg-white">
                 <button onclick="shop.switchTab('skins')" id="tab-skins" class="flex-1 py-2 text-blue-600 border-r-4 border-slate-800">Скины</button>
-                <button onclick="shop.switchTab('boosts')" id="tab-boosts" class="flex-1 py-2 text-slate-500 border-r-4 border-slate-800">Бусты</button>
-                <button onclick="shop.switchTab('chest')" id="tab-chest" class="flex-1 py-2 text-slate-500">Сундук</button>
+                <button onclick="shop.switchTab('boosts')" id="tab-boosts" class="flex-1 py-2 text-slate-500">Бусты</button>
             </div>
 
             <div class="flex-grow overflow-y-auto p-4 paper-bg" id="shop-content">
@@ -288,8 +301,8 @@
         
         const keyboardLayout = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
         
-        // Стартовые 3000 подсказок!
-        let pData = { coins: 5000, score: 0, stats: { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3000, erasers: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', adChests: 0, adChestDate: '', hintsUpgraded: false };
+        // Стартовые параметры
+        let pData = { coins: 5000, score: 0, stats: { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3000, erasers: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', adChests: 0, adChestDate: '', hintsUpgraded: false, activeGame: null };
         let currentWord = '', guessedLetters = [], wrongGuesses = 0, difficulty = 'easy', isPvp = false, gameActive = false, statsBeforeGame = {};
         const MAX_ERRORS = 8;
         
@@ -297,6 +310,18 @@
         const vk = {
             init: async () => {
                 vkBridge.send('VKWebAppInit');
+                
+                // Подписка на обновление баннера, чтобы не перекрывать нижнюю часть экрана
+                vkBridge.subscribe((e) => {
+                    if (e.detail.type === 'VKWebAppBannerAdUpdated') {
+                        const h = e.detail.data.height || 60;
+                        document.body.style.paddingBottom = `${h}px`;
+                    }
+                });
+
+                // Вызов баннера при старте
+                vk.showBanner();
+
                 await Promise.race([
                     new Promise(res => {
                         vkBridge.send('VKWebAppStorageGet', { keys: ['pData'] }).then(d => { 
@@ -306,13 +331,12 @@
                                 pData.stats = { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0, ...(loadedData.stats || {}) };
                                 if(pData.erasers === undefined) pData.erasers = 3;
                                 
-                                // Выдаем 3000 подсказок старым игрокам (один раз)
                                 if (!pData.hintsUpgraded) {
                                     pData.hints = 3000;
                                     pData.hintsUpgraded = true;
                                 }
                             } else {
-                                pData.hintsUpgraded = true; // Для новых сразу помечаем как выдано
+                                pData.hintsUpgraded = true;
                             }
                             res(); 
                         }).catch(() => res());
@@ -331,12 +355,22 @@
                     }
                 } catch(e) {}
                 
-                if (!pData.tut) tutorial.start(); 
-                else ui.showMenu();
+                if (!pData.tut) {
+                    tutorial.start();
+                } else if (pData.activeGame && pData.activeGame.currentWord) {
+                    // Предлагаем продолжить, если есть незаконченная игра
+                    ui.openModal('modal-continue');
+                } else {
+                    ui.showMenu();
+                }
             },
-            save: () => { try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){} }
+            save: () => { try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){} },
+            showBanner: () => vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' }).catch(()=>{}),
+            showInterstitial: () => vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' }).catch(()=>{}),
+            showReward: async () => { try { const d = await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' }); return d.result; } catch(e) { return false; } }
         };
 
+        // Сохранение состояния при уходе со вкладки
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') vk.save(); });
 
         // --- ЛОГИКА ИГРЫ ---
@@ -360,7 +394,37 @@
                 
                 currentWord = pool[Math.floor(Math.random() * pool.length)];
                 game.setupUI();
+                game.saveGameState(); // Сразу сохраняем начало
+            },
+            resumeSaved: () => {
+                ui.closeModal('modal-continue');
+                const saved = pData.activeGame;
+                if (!saved) { ui.showMenu(); return; }
+                
+                difficulty = saved.difficulty;
+                isPvp = saved.isPvp;
+                currentWord = saved.currentWord;
+                guessedLetters = saved.guessedLetters || [];
+                wrongGuesses = saved.wrongGuesses || 0;
+                gameActive = true;
+                statsBeforeGame = JSON.parse(JSON.stringify(pData.stats)); 
+                
+                elements.mainMenu.classList.add('hide');
+                elements.appContainer.classList.remove('hide');
+                game.setupUI();
+                draw.hangman(ctx, wrongGuesses);
+            },
+            discardSaved: () => {
+                pData.activeGame = null;
                 vk.save();
+                ui.closeModal('modal-continue');
+                ui.showMenu();
+            },
+            saveGameState: () => {
+                if (gameActive && currentWord) {
+                    pData.activeGame = { currentWord, guessedLetters, wrongGuesses, difficulty, isPvp, ts: Date.now() };
+                    vk.save();
+                }
             },
             setupUI: () => {
                 const labels = {'easy': "ЛЕГКИЙ", 'medium': "СРЕДНИЙ", 'hard': "СЛОЖНЫЙ", 'impossible': "НЕВОЗМОЖНЫЙ", 'random': "РАНДОМ"};
@@ -384,27 +448,38 @@
                     draw.hangman(ctx, wrongGuesses);
                     if (wrongGuesses >= MAX_ERRORS) game.end(false);
                 }
+                game.saveGameState(); // Сохраняем после каждого хода
             },
             useHint: () => {
                 if (!gameActive) return;
-                if (pData.hints <= 0) { shop.open(); shop.switchTab('boosts'); return; }
+                if (pData.hints <= 0) { 
+                    ui.showNotification("Закончились! Загляни в магазин 🛒");
+                    setTimeout(() => { shop.open(); shop.switchTab('boosts'); }, 800);
+                    return; 
+                }
                 const unguessed = currentWord.split('').filter(l => !guessedLetters.includes(l));
                 if (unguessed.length === 0) return;
-                pData.hints--; vk.save(); elements.hintCountEl.textContent = pData.hints;
+                pData.hints--; elements.hintCountEl.textContent = pData.hints;
                 game.handleGuess(unguessed[Math.floor(Math.random() * unguessed.length)]);
             },
             useEraser: () => {
                 if (!gameActive) return;
                 if (wrongGuesses <= 0) { ui.showNotification("Ошибок пока нет! 😉"); return; }
-                if (pData.erasers <= 0) { shop.open(); shop.switchTab('boosts'); return; }
+                if (pData.erasers <= 0) { 
+                    ui.showNotification("Закончились! Загляни в магазин 🛒");
+                    setTimeout(() => { shop.open(); shop.switchTab('boosts'); }, 800);
+                    return; 
+                }
                 
-                pData.erasers--; wrongGuesses--; vk.save(); 
+                pData.erasers--; wrongGuesses--; 
                 elements.eraserCountEl.textContent = pData.erasers;
                 draw.hangman(ctx, wrongGuesses);
+                game.saveGameState();
                 ui.showNotification("Ошибка стёрта! 🧽");
             },
             end: (isWin) => {
                 gameActive = false; pData.plays++;
+                pData.activeGame = null; // Очищаем сессию, так как уровень пройден
                 let c = 0, s = 0;
                 
                 if (isWin) {
@@ -424,6 +499,11 @@
                         if (difficulty === 'medium' && statsBeforeGame.medium < 10 && pData.stats.medium >= 10) newlyUnlocked = 'hard';
                         if (difficulty === 'hard' && statsBeforeGame.hard < 10 && pData.stats.hard >= 10) newlyUnlocked = 'impossible';
                         if (difficulty === 'impossible' && statsBeforeGame.impossible < 10 && pData.stats.impossible >= 10) newlyUnlocked = 'random';
+                    }
+
+                    // Интерстициальная реклама каждые 10 слов
+                    if (pData.plays > 0 && pData.plays % 10 === 0) {
+                        vk.showInterstitial();
                     }
 
                     if (newlyUnlocked) {
@@ -524,7 +604,6 @@
             },
             goToMenu: () => { gameActive = false; ui.showMenu(); },
             
-            // ИСПРАВЛЕНИЕ: Безопасная проверка уровней, которая не затирает элементы (замок)
             updateMenuStats: () => {
                 elements.menuScore.textContent = pData.score;
                 const checkLvl = (id, req) => {
@@ -539,10 +618,7 @@
                     } else { 
                         btn.classList.add('locked-level', 'flex', 'justify-between'); 
                         btn.classList.remove('block', 'text-center');
-                        if(lck) {
-                            lck.classList.remove('hide'); 
-                            lck.textContent = `🔒 ${req}/10`; 
-                        }
+                        if(lck) { lck.classList.remove('hide'); lck.textContent = `🔒 ${req}/10`; }
                         btn.onclick = null; 
                     }
                 };
@@ -557,7 +633,12 @@
             },
             displayWord: () => {
                 const lh = 'h-10 sm:h-12';
-                elements.wordContainer.innerHTML = currentWord.split('').map(l => `<div class="flex flex-col items-center justify-end ${lh}"><span class="text-slate-900 leading-none">${guessedLetters.includes(l) ? l : '&nbsp;'}</span><div class="w-6 sm:w-8 h-1.5 bg-slate-800 mt-1 rounded-full"></div></div>`).join('');
+                // Вместо отдельного div, используем надежный классический border-b-4 (нижнюю границу), которая не "ломается" на GitHub
+                elements.wordContainer.innerHTML = currentWord.split('').map(l => 
+                    `<div class="flex flex-col items-center justify-center ${lh} w-6 sm:w-8 border-b-4 border-slate-800 mx-0.5 sm:mx-1 mb-2">
+                        <span class="text-slate-900 text-3xl sm:text-4xl font-bold leading-none pb-1">${guessedLetters.includes(l) ? l : '&nbsp;'}</span>
+                    </div>`
+                ).join('');
                 if (gameActive && currentWord.split('').every(l => guessedLetters.includes(l))) game.end(true);
             },
             createKeyboard: () => {
@@ -588,10 +669,11 @@
         const shop = {
             open: () => { ui.openModal('modal-shop'); shop.switchTab('skins'); ui.updateCoins(); },
             switchTab: (tab) => {
-                ['skins','boosts','chest'].forEach(t => {
+                // Вкладка Сундук удалена, оставлены только 2: Скины и Бусты
+                ['skins','boosts'].forEach(t => {
                     document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-2 text-blue-600 border-r-4 border-slate-800 bg-blue-50' : 'flex-1 py-2 text-slate-500 border-r-4 border-slate-800 bg-white';
                 });
-                document.getElementById('tab-chest').classList.remove('border-r-4');
+                document.getElementById('tab-boosts').classList.remove('border-r-4');
                 const c = document.getElementById('shop-content'); c.innerHTML = '';
                 
                 if(tab === 'skins') {
@@ -607,7 +689,22 @@
                     }
                     c.appendChild(grid);
                 } else if(tab === 'boosts') {
-                    c.innerHTML = `<div class="space-y-4">
+                    const today = new Date().toISOString().split('T')[0];
+                    if (pData.adChestDate !== today) { pData.adChests = 0; pData.freeChest = ''; pData.adChestDate = today; vk.save(); }
+                    const freeAv = pData.freeChest !== today; const adsAv = pData.adChests < 3;
+                    
+                    // Сундук теперь находится вверху вкладки бустов
+                    c.innerHTML = `
+                    <div class="text-center py-4 drawn-box bg-white mb-6">
+                        <span class="text-7xl block mb-2">🎁</span>
+                        <h3 class="font-bold text-3xl mb-1">Сундук удачи</h3>
+                        <p class="text-lg text-slate-500 mb-6 leading-tight">Монеты, ластики или подсказки!</p>
+                        ${freeAv ? `<button onclick="shop.openChest('free')" class="w-[90%] mx-auto drawn-btn marker-green font-bold py-2 text-2xl mb-3 block">Открыть БЕСПЛАТНО</button>` : ''}
+                        ${!freeAv && adsAv ? `<button onclick="shop.openChest('ad')" class="w-[90%] mx-auto drawn-btn marker-blue font-bold py-2 text-xl mb-3 flex justify-center items-center gap-2"><span>Реклама за награду</span><span class="text-sm bg-black/10 px-2 py-0.5 rounded border border-slate-400">Ост: ${3-pData.adChests}</span></button>` : ''}
+                        ${!freeAv && !adsAv ? `<p class="text-red-600 font-bold bg-red-50 py-2 border-2 border-red-200 mx-4" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;">Сундуки закончились</p>` : ''}
+                    </div>
+                    
+                    <div class="space-y-4">
                         <div class="drawn-box bg-white p-4 flex items-center justify-between">
                             <div class="flex items-center gap-3"><div class="text-4xl">💡</div><div class="leading-none"><p class="font-bold text-2xl">Подсказка</p><p class="text-sm text-slate-500">Откроет 1 букву</p></div></div>
                             <button onclick="shop.buyBoost('hint')" class="drawn-btn marker-yellow px-4 py-1 text-xl font-bold">💰 50</button>
@@ -617,15 +714,6 @@
                             <button onclick="shop.buyBoost('eraser')" class="drawn-btn marker-red px-4 py-1 text-xl font-bold">💰 50</button>
                         </div>
                         <p class="text-center text-lg text-slate-600 mt-2 font-bold">У вас: Подсказок — ${pData.hints} | Ластиков — ${pData.erasers}</p>
-                    </div>`;
-                } else {
-                    const today = new Date().toISOString().split('T')[0];
-                    if (pData.adChestDate !== today) { pData.adChests = 0; pData.freeChest = ''; pData.adChestDate = today; vk.save(); }
-                    const freeAv = pData.freeChest !== today; const adsAv = pData.adChests < 3;
-                    c.innerHTML = `<div class="text-center py-4 drawn-box bg-white"><span class="text-7xl block mb-2">🎁</span><h3 class="font-bold text-3xl mb-1">Сундук удачи</h3><p class="text-lg text-slate-500 mb-6 leading-tight">Монеты, ластики или подсказки!</p>
-                        ${freeAv ? `<button onclick="shop.openChest('free')" class="w-[90%] mx-auto drawn-btn marker-green font-bold py-2 text-2xl mb-3 block">Открыть БЕСПЛАТНО</button>` : ''}
-                        ${!freeAv && adsAv ? `<button onclick="shop.openChest('ad')" class="w-[90%] mx-auto drawn-btn marker-blue font-bold py-2 text-xl mb-3 flex justify-center items-center gap-2"><span>За Рекламу</span><span class="text-sm bg-black/10 px-2 py-0.5 rounded border border-slate-400">Ост: ${3-pData.adChests}</span></button>` : ''}
-                        ${!freeAv && !adsAv ? `<p class="text-red-600 font-bold bg-red-50 py-2 border-2 border-red-200 mx-4" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;">Сундуки закончились</p>` : ''}
                     </div>`;
                 }
             },
@@ -641,16 +729,26 @@
                 } else { ui.showNotification("Мало монет! 💰"); }
             },
             openChest: async (type) => {
-                if (type === 'ad') { const res = await vk.showReward(); if(!res) return; pData.adChests++; }
-                else { pData.freeChest = new Date().toISOString().split('T')[0]; }
+                // Если тип 'ad', то жестко запрашиваем показ Rewarded Video
+                if (type === 'ad') { 
+                    const res = await vk.showReward(); 
+                    if(!res) {
+                        ui.showNotification("Реклама не досмотрена 🚫");
+                        return; 
+                    }
+                    pData.adChests++; 
+                } else { 
+                    pData.freeChest = new Date().toISOString().split('T')[0]; 
+                }
+                
                 const rand = Math.random();
                 if (rand < 0.20) { pData.hints++; ui.showNotification("🎉 +1 Подсказка!"); } else if (rand < 0.40) { pData.erasers++; ui.showNotification("🎉 +1 Ластик!"); }
                 else { const c = Math.floor(Math.random() * 41) + 70; pData.coins += c; ui.showNotification(`🎉 +${c} 💰!`); }
-                vk.save(); ui.updateCoins(); shop.switchTab('chest'); elements.hintCountEl.textContent = pData.hints; elements.eraserCountEl.textContent = pData.erasers;
+                vk.save(); ui.updateCoins(); shop.switchTab('boosts'); elements.hintCountEl.textContent = pData.hints; elements.eraserCountEl.textContent = pData.erasers;
             }
         };
 
-        // --- УЛУЧШЕННОЕ И АНИМИРОВАННОЕ ОБУЧЕНИЕ ---
+        // --- АНИМИРОВАННОЕ ОБУЧЕНИЕ ---
         const tutorial = {
             active: false,
             start: async () => {
@@ -664,7 +762,7 @@
                 
                 const setWord = (str) => { 
                     document.getElementById('tut-word').innerHTML = str.split('').map(l => 
-                        `<div class="flex flex-col items-center justify-end h-10 w-8"><span class="leading-none text-slate-900">${l === ' ' ? '&nbsp;' : l}</span><div class="w-full h-1.5 bg-slate-800 mt-1 rounded-full"></div></div>`
+                        `<div class="flex items-center justify-center h-10 w-6 border-b-4 border-slate-800 mx-0.5 mb-2"><span class="leading-none text-slate-900 pb-1 font-bold">${l === ' ' ? '&nbsp;' : l}</span></div>`
                     ).join(''); 
                 };
                 
@@ -678,7 +776,6 @@
                     }, 400);
                 };
 
-                // Создаем виртуальный курсор(руку) для наглядности
                 let pointer = document.getElementById('tut-pointer');
                 if(!pointer) {
                     pointer = document.createElement('div');
@@ -710,9 +807,7 @@
 
                 const txt = document.getElementById('tut-text');
                 
-                // Бесконечный цикл анимации пока игрок не нажмет кнопку закрытия
                 while(tutorial.active) {
-                    // Кадр 1: Завязка и визуализация цели
                     draw.hangman(tutCtx, 0); 
                     setWord('    '); 
                     document.querySelectorAll('[id^="tut-k-"]').forEach(k => k.className = 'w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1 text-slate-800');
@@ -721,7 +816,6 @@
                     txt.innerHTML = "Твоя цель &mdash; <span class='text-green-600'>разгадать слово!</span>"; 
                     await new Promise(r => setTimeout(r, 1000)); if(!tutorial.active) break;
                     
-                    // Кадр 2: Угадываем букву (Анимация мышки)
                     txt.textContent = "Выбирай буквы на клавиатуре...";
                     await movePointer('tut-k-А');
                     if(!tutorial.active) break;
@@ -733,7 +827,6 @@
                     txt.innerHTML = "Верно! <span class='text-green-600'>Буква на месте.</span>"; 
                     await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
                     
-                    // Кадр 3: Ошибка и плавное рисование виселицы
                     txt.textContent = "А если ошибиться?"; 
                     await movePointer('tut-k-Б');
                     if(!tutorial.active) break;
@@ -744,12 +837,11 @@
                     
                     for(let i=1; i<=4; i++) {
                         draw.hangman(tutCtx, i);
-                        await new Promise(r => setTimeout(r, 150)); // рисуем линии по одной
+                        await new Promise(r => setTimeout(r, 150));
                     }
                     txt.innerHTML = "За ошибку <span class='text-red-600'>рисуем деталь...</span>"; 
                     await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
                     
-                    // Кадр 4: Проигрыш
                     await movePointer('tut-k-В');
                     if(!tutorial.active) break;
                     
@@ -757,7 +849,7 @@
                     pressKey('В', 'wrong'); 
                     await new Promise(r => setTimeout(r, 400));
                     
-                    pointer.style.opacity = '0'; // Прячем мышку
+                    pointer.style.opacity = '0'; 
                     for(let i=5; i<=8; i++) {
                         draw.hangman(tutCtx, i);
                         await new Promise(r => setTimeout(r, 150));
