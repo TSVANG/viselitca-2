@@ -155,7 +155,7 @@
                 <!-- Подсказка -->
                 <button onclick="game.useHint()" class="w-16 h-16 drawn-btn marker-yellow flex items-center justify-center text-3xl relative">
                     💡
-                    <span id="hint-count" class="absolute -top-2 -right-2 bg-slate-800 text-white text-lg px-2 rounded-full border-2 border-white">3</span>
+                    <span id="hint-count" class="absolute -top-2 -right-2 bg-slate-800 text-white text-lg px-2 rounded-full border-2 border-white">3000</span>
                 </button>
             </div>
         </main>
@@ -242,9 +242,9 @@
 
     <!-- Обучение (Анимированное) -->
     <div id="tutorial-modal" class="fixed inset-0 bg-slate-900/80 flex flex-col items-center justify-center p-4 z-[60] hide modal-overlay backdrop-blur-sm">
-        <div class="drawn-box p-6 w-full max-w-sm text-center relative modal-content bg-[#fdf6e3]">
+        <div id="tut-content-box" class="drawn-box p-6 w-full max-w-sm text-center relative modal-content bg-[#fdf6e3]">
             <h3 class="text-4xl font-bold mb-2">Как играть?</h3>
-            <div class="h-16 flex items-center justify-center text-slate-800 text-2xl font-bold mb-2 px-2 leading-tight" id="tut-text">Смотри внимательно...</div>
+            <div class="h-16 flex items-center justify-center text-slate-800 text-2xl font-bold mb-2 px-2 leading-tight" id="tut-text"></div>
             
             <div class="w-full max-w-[200px] mx-auto aspect-square relative drawn-box bg-white/50 mb-4"><canvas id="tut-canvas" class="w-full h-full"></canvas></div>
             
@@ -256,7 +256,7 @@
                 <div id="tut-k-В" class="w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">В</div>
             </div>
 
-            <button onclick="tutorial.end()" id="tut-btn-close" class="w-full drawn-btn marker-green font-bold py-2 px-4 text-2xl">Понятно, Играть!</button>
+            <button onclick="tutorial.end()" id="tut-btn-close" class="w-full drawn-btn marker-green font-bold py-2 px-4 text-2xl hide">Понятно, Играть!</button>
         </div>
     </div>
 
@@ -288,9 +288,10 @@
         
         const keyboardLayout = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
         
-        let pData = { coins: 5000, score: 0, stats: { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3, erasers: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', adChests: 0, adChestDate: '' };
+        // Стартовые 3000 подсказок!
+        let pData = { coins: 5000, score: 0, stats: { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3000, erasers: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', adChests: 0, adChestDate: '', hintsUpgraded: false };
         let currentWord = '', guessedLetters = [], wrongGuesses = 0, difficulty = 'easy', isPvp = false, gameActive = false, statsBeforeGame = {};
-        const MAX_ERRORS = 8; // Количество частей виселицы
+        const MAX_ERRORS = 8;
         
         // --- VK BRIDGE ВЗАИМОДЕЙСТВИЕ ---
         const vk = {
@@ -301,10 +302,17 @@
                         vkBridge.send('VKWebAppStorageGet', { keys: ['pData'] }).then(d => { 
                             if (d.keys && d.keys[0].value) {
                                 const loadedData = JSON.parse(d.keys[0].value);
-                                // Безопасное слияние данных с защитой от пустых объектов
                                 pData = { ...pData, ...loadedData };
                                 pData.stats = { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0, ...(loadedData.stats || {}) };
                                 if(pData.erasers === undefined) pData.erasers = 3;
+                                
+                                // Выдаем 3000 подсказок старым игрокам (один раз)
+                                if (!pData.hintsUpgraded) {
+                                    pData.hints = 3000;
+                                    pData.hintsUpgraded = true;
+                                }
+                            } else {
+                                pData.hintsUpgraded = true; // Для новых сразу помечаем как выдано
                             }
                             res(); 
                         }).catch(() => res());
@@ -329,7 +337,6 @@
             save: () => { try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){} }
         };
 
-        // Исправление бага с сохранениями при сворачивании игры
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') vk.save(); });
 
         // --- ЛОГИКА ИГРЫ ---
@@ -353,7 +360,7 @@
                 
                 currentWord = pool[Math.floor(Math.random() * pool.length)];
                 game.setupUI();
-                vk.save(); // Сохраняем состояние при старте
+                vk.save();
             },
             setupUI: () => {
                 const labels = {'easy': "ЛЕГКИЙ", 'medium': "СРЕДНИЙ", 'hard': "СЛОЖНЫЙ", 'impossible': "НЕВОЗМОЖНЫЙ", 'random': "РАНДОМ"};
@@ -491,11 +498,9 @@
                 }
                 context.stroke();
 
-                // Отрисовка скина
                 if (errors > 2 && pData.equippedSkin > 0 && context === ctx) {
                     const skinMap = {0:'👤', 1:'🧢', 2:'🎩', 3:'👑', 4:'🕶️', 5:'🎀', 6:'😎', 9:'👽'};
                     context.font = `${r*2.5}px Arial`; context.textAlign = 'center'; context.textBaseline = 'middle';
-                    // Инопланетянин(9) и очки(4,6) прикрепляются на лицо (offset 0), шапки выше (offset -r)
                     const offset = [4, 6, 9].includes(pData.equippedSkin) ? 0 : -r; 
                     context.fillText(skinMap[pData.equippedSkin], cX, hY + offset);
                 }
@@ -518,20 +523,27 @@
                 ui.closeAllModals(); elements.appContainer.classList.add('hide'); elements.mainMenu.classList.remove('hide'); ui.updateMenuStats();
             },
             goToMenu: () => { gameActive = false; ui.showMenu(); },
+            
+            // ИСПРАВЛЕНИЕ: Безопасная проверка уровней, которая не затирает элементы (замок)
             updateMenuStats: () => {
                 elements.menuScore.textContent = pData.score;
                 const checkLvl = (id, req) => {
-                    const btn = document.getElementById(`btn-lvl-${id}`); const lck = document.getElementById(`lock-${id}`);
+                    const btn = document.getElementById(`btn-lvl-${id}`); 
+                    const lck = document.getElementById(`lock-${id}`);
+                    if (!btn) return;
                     if (req >= 10) { 
                         btn.classList.remove('locked-level', 'flex', 'justify-between'); 
                         btn.classList.add('block', 'text-center'); 
-                        lck.classList.add('hide'); 
-                        btn.innerHTML = btn.getAttribute('data-name');
+                        if(lck) lck.classList.add('hide'); 
                         btn.onclick = () => game.init(id); 
                     } else { 
                         btn.classList.add('locked-level', 'flex', 'justify-between'); 
                         btn.classList.remove('block', 'text-center');
-                        lck.classList.remove('hide'); lck.textContent = `🔒 ${req}/10`; btn.onclick = null; 
+                        if(lck) {
+                            lck.classList.remove('hide'); 
+                            lck.textContent = `🔒 ${req}/10`; 
+                        }
+                        btn.onclick = null; 
                     }
                 };
                 checkLvl('medium', pData.stats.easy);
@@ -638,13 +650,13 @@
             }
         };
 
-        // --- АНИМИРОВАННОЕ ОБУЧЕНИЕ ---
+        // --- УЛУЧШЕННОЕ И АНИМИРОВАННОЕ ОБУЧЕНИЕ ---
         const tutorial = {
             active: false,
             start: async () => {
                 tutorial.active = true;
                 ui.openModal('tutorial-modal');
-                document.getElementById('tut-btn-close').classList.remove('hide'); // Кнопка видна сразу
+                document.getElementById('tut-btn-close').classList.remove('hide');
                 
                 const c = document.getElementById('tut-canvas'); 
                 const s = Math.min(c.parentElement.clientWidth, c.parentElement.clientHeight, 200);
@@ -655,6 +667,7 @@
                         `<div class="flex flex-col items-center justify-end h-10 w-8"><span class="leading-none text-slate-900">${l === ' ' ? '&nbsp;' : l}</span><div class="w-full h-1.5 bg-slate-800 mt-1 rounded-full"></div></div>`
                     ).join(''); 
                 };
+                
                 const pressKey = (id, type) => {
                     const k = document.getElementById(`tut-k-${id}`);
                     k.classList.add('anim-press');
@@ -662,41 +675,95 @@
                         k.classList.remove('anim-press');
                         if(type === 'correct') { k.className = 'w-10 h-10 border-2 border-green-600 bg-green-200 text-green-900 rounded-lg flex items-center justify-center pb-1 font-bold'; }
                         if(type === 'wrong') { k.className = 'w-10 h-10 border-2 border-slate-400 bg-transparent text-slate-400 rounded-lg flex items-center justify-center pb-1 line-through'; }
-                    }, 500);
+                    }, 400);
                 };
+
+                // Создаем виртуальный курсор(руку) для наглядности
+                let pointer = document.getElementById('tut-pointer');
+                if(!pointer) {
+                    pointer = document.createElement('div');
+                    pointer.id = 'tut-pointer';
+                    pointer.innerHTML = '👇';
+                    pointer.className = 'absolute text-5xl transition-all duration-500 ease-in-out z-[70] opacity-0';
+                    pointer.style.pointerEvents = 'none';
+                    document.getElementById('tut-content-box').appendChild(pointer);
+                }
+                
+                const movePointer = async (targetId, offX=0, offY=0) => {
+                    const target = document.getElementById(targetId);
+                    const modal = document.getElementById('tut-content-box');
+                    if(!target || !modal) return;
+                    const rect = target.getBoundingClientRect();
+                    const mRect = modal.getBoundingClientRect();
+                    pointer.style.left = (rect.left - mRect.left + rect.width/2 - 20 + offX) + 'px';
+                    pointer.style.top = (rect.top - mRect.top + rect.height/2 + offY) + 'px';
+                    pointer.style.opacity = '1';
+                    await new Promise(r => setTimeout(r, 600));
+                };
+
+                const tapPointer = async () => {
+                    pointer.style.transform = 'scale(0.7)';
+                    await new Promise(r => setTimeout(r, 200));
+                    pointer.style.transform = 'scale(1)';
+                    await new Promise(r => setTimeout(r, 200));
+                };
+
                 const txt = document.getElementById('tut-text');
                 
-                // Сценарий
+                // Бесконечный цикл анимации пока игрок не нажмет кнопку закрытия
                 while(tutorial.active) {
-                    // Кадр 1: Сброс
+                    // Кадр 1: Завязка и визуализация цели
                     draw.hangman(tutCtx, 0); 
-                    setWord('    '); // Пустое место
+                    setWord('    '); 
                     document.querySelectorAll('[id^="tut-k-"]').forEach(k => k.className = 'w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1 text-slate-800');
-                    txt.textContent = "Угадывай буквы в слове!"; 
+                    pointer.style.opacity = '0';
+                    
+                    txt.innerHTML = "Твоя цель &mdash; <span class='text-green-600'>разгадать слово!</span>"; 
+                    await new Promise(r => setTimeout(r, 1000)); if(!tutorial.active) break;
+                    
+                    // Кадр 2: Угадываем букву (Анимация мышки)
+                    txt.textContent = "Выбирай буквы на клавиатуре...";
+                    await movePointer('tut-k-А');
+                    if(!tutorial.active) break;
+                    
+                    await tapPointer();
+                    pressKey('А', 'correct'); 
+                    await new Promise(r => setTimeout(r, 400));
+                    setWord('   А');
+                    txt.innerHTML = "Верно! <span class='text-green-600'>Буква на месте.</span>"; 
                     await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
                     
-                    // Кадр 2: Верно
-                    pressKey('А', 'correct'); 
-                    await new Promise(r => setTimeout(r, 500));
-                    setWord('   А');
-                    txt.textContent = "Верно! Буква на месте."; 
-                    await new Promise(r => setTimeout(r, 2500)); if(!tutorial.active) break;
-                    
-                    // Кадр 3: Ошибка
+                    // Кадр 3: Ошибка и плавное рисование виселицы
                     txt.textContent = "А если ошибиться?"; 
-                    await new Promise(r => setTimeout(r, 1500)); if(!tutorial.active) break;
-                    pressKey('Б', 'wrong'); 
-                    await new Promise(r => setTimeout(r, 500));
-                    draw.hangman(tutCtx, 4); // Рисуем сразу до туловища, чтобы было видно
-                    txt.textContent = "За ошибку рисуем деталь..."; 
-                    await new Promise(r => setTimeout(r, 2500)); if(!tutorial.active) break;
+                    await movePointer('tut-k-Б');
+                    if(!tutorial.active) break;
                     
-                    // Кадр 4: Финал
+                    await tapPointer();
+                    pressKey('Б', 'wrong'); 
+                    await new Promise(r => setTimeout(r, 400));
+                    
+                    for(let i=1; i<=4; i++) {
+                        draw.hangman(tutCtx, i);
+                        await new Promise(r => setTimeout(r, 150)); // рисуем линии по одной
+                    }
+                    txt.innerHTML = "За ошибку <span class='text-red-600'>рисуем деталь...</span>"; 
+                    await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break;
+                    
+                    // Кадр 4: Проигрыш
+                    await movePointer('tut-k-В');
+                    if(!tutorial.active) break;
+                    
+                    await tapPointer();
                     pressKey('В', 'wrong'); 
-                    await new Promise(r => setTimeout(r, 500));
-                    draw.hangman(tutCtx, 8); // Рисуем полностью
-                    txt.textContent = "8 ошибок — и ты проиграл!";
-                    await new Promise(r => setTimeout(r, 4000));
+                    await new Promise(r => setTimeout(r, 400));
+                    
+                    pointer.style.opacity = '0'; // Прячем мышку
+                    for(let i=5; i<=8; i++) {
+                        draw.hangman(tutCtx, i);
+                        await new Promise(r => setTimeout(r, 150));
+                    }
+                    txt.innerHTML = "<span class='text-red-600'>8 ошибок</span> &mdash; и ты проиграл!";
+                    await new Promise(r => setTimeout(r, 3500));
                 }
             },
             end: () => { tutorial.active = false; pData.tut = true; vk.save(); ui.closeModal('tutorial-modal'); ui.showMenu(); }
