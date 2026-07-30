@@ -328,28 +328,24 @@
         const MAX_ERRORS = 8;
         
         // --- АУДИО МЕНЕДЖЕР ---
-        // Использование ./ принуждает браузер и GitHub Pages искать файлы строго в текущей директории
         const audioManager = {
             bgmMenu: new Audio('./menu-fon(2).mp3'),
             bgmGame: [new Audio('./fon-1.mp3'), new Audio('./fon-2.mp3'), new Audio('./fon-3.mp3')],
             sfx: {
-                correct: new Audio('./pen-small.mp3'),
-                wrong: new Audio('./pen-long.mp3'),
-                hint: new Audio('./pen-small.mp3'),
-                eraser: new Audio('./lastik.mp3'),
-                click: new Audio('./vozvrat-is-korsini.mp3')
+                correct: new Audio('./pen-long.wav'),
+                wrong: new Audio('./pen-small.wav'),
+                hint: new Audio('./pen-long.wav'),
+                eraser: new Audio('./lastik.mp3')
             },
             currentBgm: null,
             started: false,
+            ctx: null,
 
             init: () => {
                 audioManager.bgmMenu.loop = true;
                 audioManager.bgmMenu.volume = 0.4;
                 audioManager.bgmGame.forEach(a => { a.loop = true; a.volume = 0.3; });
                 Object.values(audioManager.sfx).forEach(a => a.volume = 0.8);
-
-                // Дополнительное логирование для отладки путей GitHub
-                audioManager.bgmMenu.onerror = (e) => console.error("Ошибка загрузки аудио (меню):", e);
             },
             
             playBgm: (type) => {
@@ -375,9 +371,35 @@
                 s.play().catch(e => console.log('SFX blocked', e));
             },
 
+            // Генерация мягкого звука тапа "на лету" (без задержек и файлов)
+            playClick: () => {
+                if (!pData.settings.sfx || !audioManager.started) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!audioManager.ctx) audioManager.ctx = new AudioContext();
+                    if (audioManager.ctx.state === 'suspended') audioManager.ctx.resume();
+                    
+                    const osc = audioManager.ctx.createOscillator();
+                    const gain = audioManager.ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, audioManager.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(50, audioManager.ctx.currentTime + 0.05);
+                    
+                    gain.gain.setValueAtTime(0.2, audioManager.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioManager.ctx.currentTime + 0.05);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioManager.ctx.destination);
+                    
+                    osc.start();
+                    osc.stop(audioManager.ctx.currentTime + 0.05);
+                } catch(e) {}
+            },
+
             toggleMusic: () => {
                 pData.settings.music = !pData.settings.music;
-                vk.save();
+                vk.save(true);
                 ui.updateSettingsUI();
                 if (pData.settings.music) {
                     audioManager.playBgm(gameActive ? 'game' : 'menu');
@@ -388,20 +410,24 @@
 
             toggleSfx: () => {
                 pData.settings.sfx = !pData.settings.sfx;
-                vk.save();
+                vk.save(true);
                 ui.updateSettingsUI();
             }
         };
 
-        // Принудительная загрузка аудио по первому тапу (важно для iOS/Android/VK)
+        // Разблокировка звука при первом касании
         document.body.addEventListener('click', () => {
             if (!audioManager.started) {
                 audioManager.started = true;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!audioManager.ctx) audioManager.ctx = new AudioContext();
+                    if (audioManager.ctx.state === 'suspended') audioManager.ctx.resume();
+                } catch(e) {}
                 
-                // Принудительно дергаем файлы, чтобы браузер дал разрешение на их запуск
                 audioManager.bgmMenu.load();
                 audioManager.bgmGame.forEach(a => a.load());
-                Object.values(audioManager.sfx).forEach(a => a.load());
+                Object.values(audioManager.sfx).forEach(a => { if (a instanceof Audio) a.load(); });
 
                 if (pData.settings.music) {
                     audioManager.playBgm(gameActive ? 'game' : 'menu');
@@ -409,16 +435,18 @@
             }
         }, { once: true });
 
+        // Собственный мягкий клик на все кнопки
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (btn) {
                 if (!btn.classList.contains('key-btn') && btn.id !== 'btn-eraser' && btn.id !== 'btn-hint') {
-                    audioManager.playSfx('click');
+                    audioManager.playClick();
                 }
             }
         });
 
-        // --- VK BRIDGE ВЗАИМОДЕЙСТВИЕ ---
+        // --- VK BRIDGE ВЗАИМОДЕЙСТВИЕ И СОХРАНЕНИЕ ---
+        let saveTimeout = null;
         const vk = {
             init: async () => {
                 vkBridge.send('VKWebAppInit');
@@ -433,6 +461,7 @@
                 vk.showBanner();
                 audioManager.init();
 
+                // Увеличенный таймаут до 2.5с для надежной загрузки облака на мобильных
                 await Promise.race([
                     new Promise(res => {
                         vkBridge.send('VKWebAppStorageGet', { keys: ['pData'] }).then(d => { 
@@ -453,7 +482,7 @@
                             res(); 
                         }).catch(() => res());
                     }),
-                    new Promise(res => setTimeout(res, 800))
+                    new Promise(res => setTimeout(res, 2500))
                 ]);
                 
                 ui.updateMenuStats();
@@ -476,13 +505,35 @@
                     ui.showMenu();
                 }
             },
-            save: () => { try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){} },
+            
+            // Безопасное сохранение (отложенное, чтобы ВК не заблокировал за спам)
+            save: (force = false) => { 
+                if(force) {
+                    try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){}
+                    return;
+                }
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){}
+                }, 1500);
+            },
+            
             showBanner: () => vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' }).catch(()=>{}),
             showInterstitial: () => vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' }).catch(()=>{}),
             showReward: async () => { try { const d = await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' }); return d.result; } catch(e) { return false; } }
         };
 
-        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') vk.save(); });
+        // Гарантированная пауза музыки и сохранение при сворачивании игры
+        document.addEventListener('visibilitychange', () => { 
+            if (document.visibilityState === 'hidden') {
+                vk.save(true);
+                if (audioManager.currentBgm) audioManager.currentBgm.pause();
+            } else {
+                if (pData.settings.music && audioManager.started && audioManager.currentBgm) {
+                    audioManager.currentBgm.play().catch(()=>{});
+                }
+            }
+        });
 
         // --- ЛОГИКА ИГРЫ ---
         const game = {
@@ -529,7 +580,7 @@
             },
             discardSaved: () => {
                 pData.activeGame = null;
-                vk.save();
+                vk.save(true);
                 ui.closeModal('modal-continue');
                 ui.showMenu();
             },
@@ -607,7 +658,7 @@
                     if(!isPvp && difficulty !== 'daily') pData.stats[difficulty]++;
                     if(!pData.dict.includes(currentWord)) pData.dict.push(currentWord);
                 }
-                vk.save(); ui.updateCoins();
+                vk.save(true); ui.updateCoins();
 
                 setTimeout(() => {
                     audioManager.playBgm('menu'); 
@@ -846,11 +897,11 @@
                 if(id === 0 || pData.skins.includes(id)) { pData.equippedSkin = id; }
                 else if(pData.coins >= price) { pData.coins -= price; pData.skins.push(id); pData.equippedSkin = id; ui.showNotification("Скин куплен! 🎉"); }
                 else { ui.showNotification("Мало монет! 💰"); return; }
-                vk.save(); ui.updateCoins(); shop.switchTab('skins'); if(gameActive) draw.hangman(ctx, wrongGuesses);
+                vk.save(true); ui.updateCoins(); shop.switchTab('skins'); if(gameActive) draw.hangman(ctx, wrongGuesses);
             },
             buyBoost: (type) => { 
                 if(pData.coins >= 50) { pData.coins -= 50; if(type === 'hint') pData.hints++; if(type === 'eraser') pData.erasers++;
-                    vk.save(); ui.updateCoins(); elements.hintCountEl.textContent = pData.hints; elements.eraserCountEl.textContent = pData.erasers; 
+                    vk.save(true); ui.updateCoins(); elements.hintCountEl.textContent = pData.hints; elements.eraserCountEl.textContent = pData.erasers; 
                     if (document.getElementById('shop-hints')) { document.getElementById('shop-hints').textContent = pData.hints; document.getElementById('shop-erasers').textContent = pData.erasers; }
                     ui.showNotification("Куплено! 🛒");
                 } else { ui.showNotification("Мало монет! 💰"); }
@@ -870,11 +921,11 @@
                 const rand = Math.random();
                 if (rand < 0.20) { pData.hints++; ui.showNotification("🎉 +1 Подсказка!"); } else if (rand < 0.40) { pData.erasers++; ui.showNotification("🎉 +1 Ластик!"); }
                 else { const c = Math.floor(Math.random() * 41) + 70; pData.coins += c; ui.showNotification(`🎉 +${c} 💰!`); }
-                vk.save(); ui.updateCoins(); shop.switchTab('boosts'); elements.hintCountEl.textContent = pData.hints; elements.eraserCountEl.textContent = pData.erasers;
+                vk.save(true); ui.updateCoins(); shop.switchTab('boosts'); elements.hintCountEl.textContent = pData.hints; elements.eraserCountEl.textContent = pData.erasers;
             }
         };
 
-        // --- АНИМИРОВАННОЕ ОБУЧЕНИЕ (БЕЗ ПАЛЬЦА) ---
+        // --- АНИМИРОВАННОЕ ОБУЧЕНИЕ ---
         const tutorial = {
             active: false,
             start: async () => {
@@ -947,7 +998,7 @@
                     await new Promise(r => setTimeout(r, 3500));
                 }
             },
-            end: () => { tutorial.active = false; pData.tut = true; vk.save(); ui.closeModal('tutorial-modal'); ui.showMenu(); }
+            end: () => { tutorial.active = false; pData.tut = true; vk.save(true); ui.closeModal('tutorial-modal'); ui.showMenu(); }
         };
 
         const pvp = {
