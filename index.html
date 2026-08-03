@@ -79,106 +79,154 @@
             50% { transform: scale(0.85); background: #e2e8f0; }
         }
         .anim-press { animation: tut-press 0.5s ease-in-out; }
+
+        /* --- ГЛОБАЛЬНАЯ АДАПТАЦИЯ ДЛЯ КРОШЕЧНЫХ ЭКРАНОВ (240x360) --- */
+        @media (max-width: 320px), (max-height: 480px) {
+            .text-6xl { font-size: 2.5rem !important; line-height: 1 !important; }
+            .text-5xl { font-size: 2rem !important; line-height: 1.1 !important; }
+            .text-4xl { font-size: 1.75rem !important; line-height: 1.1 !important; }
+            .text-3xl { font-size: 1.5rem !important; }
+            .text-2xl { font-size: 1.25rem !important; }
+            .text-xl { font-size: 1.1rem !important; }
+            .text-lg { font-size: 0.9rem !important; }
+
+            .p-4 { padding: 0.5rem !important; }
+            .p-6 { padding: 0.75rem !important; }
+            .p-8 { padding: 1rem !important; }
+            
+            .gap-4 { gap: 0.5rem !important; }
+            .gap-6 { gap: 0.5rem !important; }
+            .mb-6 { margin-bottom: 0.75rem !important; }
+            .mb-4 { margin-bottom: 0.5rem !important; }
+            .mt-4 { margin-top: 0.5rem !important; }
+            .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.35rem !important; }
+
+            .drawn-box, .drawn-btn, .key-btn { border-width: 2px !important; }
+            
+            #hangman-container { 
+                max-height: 25vh; 
+                min-height: 80px; 
+                max-width: 25vh; 
+                margin: 0 auto; 
+            }
+            
+            .key-btn { height: 1.8rem !important; width: 8.1% !important; font-size: 0.7rem !important; border-width: 1px !important; border-radius: 6px !important; }
+            #keyboard > div { gap: 2px !important; }
+            
+            .action-btn { width: 2.75rem !important; height: 2.75rem !important; font-size: 1.25rem !important; }
+            .action-btn span { font-size: 0.65rem !important; top: -5px !important; right: -5px !important; width: 1.25rem !important; height: 1.25rem !important; padding: 0 !important; border-width: 1px !important;}
+            
+            #main-menu-content { max-width: 95vw !important; width: 100% !important; }
+            .menu-icon-btn { padding: 0.35rem !important; }
+            .menu-icon-btn span { font-size: 1.5rem !important; }
+
+            /* Компактный вид слов */
+            .word-letter-container { height: 1.75rem !important; width: 1rem !important; margin-bottom: 0.25rem !important; border-bottom-width: 2px !important; margin-left: 2px !important; margin-right: 2px !important; }
+            .word-letter { font-size: 1.25rem !important; padding-bottom: 0 !important; }
+        }
     </style>
 </head>
 <body class="paper-bg flex flex-col items-center justify-center min-h-screen p-1 sm:p-2 text-slate-800" oncontextmenu="return false;">
 
     <!-- ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ (Toast) -->
-    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-xl z-[100] opacity-0 pointer-events-none -translate-y-10 transition-all duration-300 font-bold text-xl text-center min-w-[200px] border-2 border-slate-900" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;"></div>
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-2xl shadow-xl z-[100] opacity-0 pointer-events-none -translate-y-10 transition-all duration-300 font-bold text-lg sm:text-xl text-center min-w-[200px] border-2 border-slate-900 w-11/12 max-w-xs" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;"></div>
 
     <!-- ГЛАВНОЕ МЕНЮ -->
-    <div id="main-menu" class="fixed inset-0 paper-bg z-40 flex flex-col items-center justify-center p-4">
-        <div id="main-menu-content" class="w-full max-w-sm flex flex-col gap-4 fade-in">
+    <div id="main-menu" class="fixed inset-0 paper-bg z-40 flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div id="main-menu-content" class="w-full max-w-sm flex flex-col gap-3 sm:gap-4 fade-in my-auto">
             <!-- Статистика -->
-            <div class="flex justify-between items-center drawn-box p-3">
-                <div class="flex items-center gap-2"><span class="text-2xl">💰</span><span id="menu-coins" class="font-bold text-2xl">0</span></div>
-                <div class="flex items-center gap-2"><span class="text-2xl">🏆</span><span id="menu-score" class="font-bold text-2xl">0</span></div>
+            <div class="flex justify-between items-center drawn-box p-2 sm:p-3">
+                <div class="flex items-center gap-1 sm:gap-2"><span class="text-xl sm:text-2xl">💰</span><span id="menu-coins" class="font-bold text-xl sm:text-2xl">0</span></div>
+                <div class="flex items-center gap-1 sm:gap-2"><span class="text-xl sm:text-2xl">🏆</span><span id="menu-score" class="font-bold text-xl sm:text-2xl">0</span></div>
             </div>
 
-            <h1 class="text-6xl font-bold text-center my-2 tracking-tight text-slate-900" style="text-shadow: 2px 2px 0px rgba(0,0,0,0.1);">Виселица</h1>
+            <h1 class="text-4xl sm:text-6xl font-bold text-center my-1 sm:my-2 tracking-tight text-slate-900" style="text-shadow: 2px 2px 0px rgba(0,0,0,0.1);">Виселица</h1>
 
             <!-- Кнопки уровней -->
-            <div class="space-y-3 relative text-2xl">
-                <button data-level="easy" onclick="game.init('easy')" class="w-full drawn-btn marker-green font-bold py-2 px-4 text-center">Легкий</button>
+            <div class="space-y-3 relative text-xl sm:text-2xl">
+                <button data-level="easy" onclick="game.init('easy')" class="w-full drawn-btn marker-green font-bold py-1.5 sm:py-2 px-2 sm:px-4 text-center">Легкий</button>
                 
-                <button data-level="medium" id="btn-lvl-medium" data-name="Средний" class="w-full drawn-btn marker-yellow font-bold py-2 px-4 locked-level flex justify-between items-center">
-                    <span>Средний</span><span class="text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-medium">🔒 0/10</span>
+                <button data-level="medium" id="btn-lvl-medium" data-name="Средний" class="w-full drawn-btn marker-yellow font-bold py-1.5 sm:py-2 px-2 sm:px-4 locked-level flex justify-between items-center">
+                    <span>Средний</span><span class="text-base sm:text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-medium">🔒 0/10</span>
                 </button>
 
-                <button data-level="hard" id="btn-lvl-hard" data-name="Сложный" class="w-full drawn-btn marker-orange font-bold py-2 px-4 locked-level flex justify-between items-center">
-                    <span>Сложный</span><span class="text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-hard">🔒 0/10</span>
+                <button data-level="hard" id="btn-lvl-hard" data-name="Сложный" class="w-full drawn-btn marker-orange font-bold py-1.5 sm:py-2 px-2 sm:px-4 locked-level flex justify-between items-center">
+                    <span>Сложный</span><span class="text-base sm:text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-hard">🔒 0/10</span>
                 </button>
 
-                <button data-level="impossible" id="btn-lvl-impossible" data-name="Невозможный" class="w-full drawn-btn marker-red font-bold py-2 px-4 locked-level flex justify-between items-center">
-                    <span>Невозможный</span><span class="text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-impossible">🔒 0/10</span>
+                <button data-level="impossible" id="btn-lvl-impossible" data-name="Невозможный" class="w-full drawn-btn marker-red font-bold py-1.5 sm:py-2 px-2 sm:px-4 locked-level flex justify-between items-center">
+                    <span>Невозможный</span><span class="text-base sm:text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-impossible">🔒 0/10</span>
                 </button>
 
-                <button data-level="random" id="btn-lvl-random" data-name="Бог рандома" class="w-full drawn-btn marker-purple font-bold py-2 px-4 locked-level flex justify-between items-center">
-                    <span>Бог рандома</span><span class="text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-random">🔒 0/10</span>
+                <button data-level="random" id="btn-lvl-random" data-name="Бог рандома" class="w-full drawn-btn marker-purple font-bold py-1.5 sm:py-2 px-2 sm:px-4 locked-level flex justify-between items-center">
+                    <span>Бог рандома</span><span class="text-base sm:text-lg bg-black/10 px-2 py-0.5 rounded-lg border border-slate-800" id="lock-random">🔒 0/10</span>
                 </button>
             </div>
 
-            <button id="btn-daily" class="w-full drawn-btn marker-blue font-bold py-2 px-4 text-2xl flex items-center justify-center gap-2 mt-2">
+            <button id="btn-daily" class="w-full drawn-btn marker-blue font-bold py-1.5 sm:py-2 px-2 sm:px-4 text-xl sm:text-2xl flex items-center justify-center gap-2 mt-1">
                 <span>🌟 Слово Дня</span>
             </button>
 
             <!-- Нижняя панель иконок -->
-            <div class="grid grid-cols-3 gap-2 mt-2">
-                <button onclick="shop.open()" class="drawn-btn bg-white p-2 flex flex-col items-center justify-center"><span class="text-3xl">🛒</span></button>
-                <button onclick="dict.open()" class="drawn-btn bg-white p-2 flex flex-col items-center justify-center"><span class="text-3xl">📚</span></button>
-                <button onclick="pvp.open()" class="drawn-btn bg-white p-2 flex flex-col items-center justify-center"><span class="text-3xl">⚔️</span></button>
-                <button onclick="ui.showLeaderboard()" class="drawn-btn bg-white p-2 flex flex-col items-center justify-center"><span class="text-3xl">🏅</span></button>
-                <button onclick="ui.shareApp()" class="drawn-btn bg-white p-2 flex flex-col items-center justify-center"><span class="text-3xl">📤</span></button>
-                <button onclick="ui.openSettings()" class="drawn-btn bg-white p-2 flex flex-col items-center justify-center"><span class="text-3xl">⚙️</span></button>
+            <div class="grid grid-cols-3 gap-1 sm:gap-2 mt-1">
+                <button onclick="shop.open()" class="menu-icon-btn drawn-btn bg-white p-1.5 sm:p-2 flex flex-col items-center justify-center"><span class="text-2xl sm:text-3xl">🛒</span></button>
+                <button onclick="dict.open()" class="menu-icon-btn drawn-btn bg-white p-1.5 sm:p-2 flex flex-col items-center justify-center"><span class="text-2xl sm:text-3xl">📚</span></button>
+                <button onclick="pvp.open()" class="menu-icon-btn drawn-btn bg-white p-1.5 sm:p-2 flex flex-col items-center justify-center"><span class="text-2xl sm:text-3xl">⚔️</span></button>
+                <button onclick="ui.showLeaderboard()" class="menu-icon-btn drawn-btn bg-white p-1.5 sm:p-2 flex flex-col items-center justify-center"><span class="text-2xl sm:text-3xl">🏅</span></button>
+                <button onclick="ui.shareApp()" class="menu-icon-btn drawn-btn bg-white p-1.5 sm:p-2 flex flex-col items-center justify-center"><span class="text-2xl sm:text-3xl">📤</span></button>
+                <button onclick="ui.openSettings()" class="menu-icon-btn drawn-btn bg-white p-1.5 sm:p-2 flex flex-col items-center justify-center"><span class="text-2xl sm:text-3xl">⚙️</span></button>
             </div>
         </div>
     </div>
 
     <!-- ИГРОВОЙ ЭКРАН -->
     <div id="app-container" class="w-full max-w-md mx-auto flex flex-col h-full transition-all duration-300 hide z-10 relative">
-        <header class="flex justify-between items-center mb-2 flex-shrink-0 w-full pt-2">
-            <button onclick="ui.goToMenu()" class="w-12 h-12 drawn-btn bg-white flex items-center justify-center text-3xl pb-1">⬅</button>
-            <div class="text-2xl font-bold bg-white border-2 border-slate-800 px-4 py-0.5 rounded-xl text-slate-800" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;" id="game-diff-label">УРОВЕНЬ</div>
+        <header class="flex justify-between items-center mb-1 flex-shrink-0 w-full pt-1 sm:pt-2">
+            <button onclick="ui.goToMenu()" class="w-10 h-10 sm:w-12 sm:h-12 drawn-btn bg-white flex items-center justify-center text-2xl sm:text-3xl pb-1">⬅</button>
+            <div class="text-lg sm:text-2xl font-bold bg-white border-2 border-slate-800 px-2 sm:px-4 py-0.5 rounded-xl text-slate-800 text-center flex-1 mx-2 overflow-hidden text-ellipsis whitespace-nowrap" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;" id="game-diff-label">УРОВЕНЬ</div>
             
-            <div class="drawn-box px-3 py-1 flex items-center justify-center gap-1.5 bg-white">
-                <span class="text-xl">💰</span>
-                <span id="game-coins-show" class="font-bold text-xl text-slate-800">0</span>
+            <div class="drawn-box px-2 sm:px-3 py-0.5 sm:py-1 flex items-center justify-center gap-1 bg-white">
+                <span class="text-base sm:text-xl">💰</span>
+                <span id="game-coins-show" class="font-bold text-base sm:text-xl text-slate-800">0</span>
             </div>
         </header>
 
         <main class="w-full flex flex-col items-center flex-grow justify-around min-h-0">
-            <div id="hangman-container" class="w-full max-w-[240px] sm:max-w-xs aspect-square relative drawn-box bg-white/50"><canvas id="hangman-canvas" class="w-full h-full"></canvas></div>
-            <div id="word-container" class="flex flex-wrap justify-center gap-x-1 sm:gap-x-1.5 gap-y-2 my-2 text-4xl font-bold tracking-widest uppercase"></div>
-            <div id="keyboard" class="w-full flex flex-col items-center gap-2 mt-2 font-bold uppercase"></div>
+            <!-- Canvas теперь максимально гибкий -->
+            <div id="hangman-container" class="w-full max-w-[240px] sm:max-w-xs aspect-square relative drawn-box bg-white/50 flex-shrink flex-grow-0"><canvas id="hangman-canvas" class="w-full h-full"></canvas></div>
             
-            <div class="mt-4 w-full flex justify-center gap-6 px-4">
+            <div id="word-container" class="flex flex-wrap justify-center gap-x-0.5 gap-y-1 sm:gap-y-2 my-1 sm:my-2 text-2xl sm:text-4xl font-bold tracking-widest uppercase w-full"></div>
+            
+            <div id="keyboard" class="w-full flex flex-col items-center gap-1 sm:gap-2 mt-1 font-bold uppercase pb-2"></div>
+            
+            <div class="w-full flex justify-center gap-4 sm:gap-6 px-4 pb-2">
                 <!-- Ластик -->
-                <button id="btn-eraser" onclick="game.useEraser()" class="w-16 h-16 drawn-btn marker-red flex items-center justify-center text-3xl relative">
+                <button id="btn-eraser" onclick="game.useEraser()" class="action-btn w-12 h-12 sm:w-16 sm:h-16 drawn-btn marker-red flex items-center justify-center text-2xl sm:text-3xl relative">
                     🧽
-                    <span id="eraser-count" class="absolute -top-2 -right-2 bg-slate-800 text-white text-lg px-2 rounded-full border-2 border-white">3</span>
+                    <span id="eraser-count" class="absolute -top-2 -right-2 bg-slate-800 text-white text-sm sm:text-lg px-1 sm:px-2 rounded-full border-2 border-white flex items-center justify-center min-w-[1.25rem] min-h-[1.25rem]">3</span>
                 </button>
                 <!-- Подсказка -->
-                <button id="btn-hint" onclick="game.useHint()" class="w-16 h-16 drawn-btn marker-yellow flex items-center justify-center text-3xl relative">
+                <button id="btn-hint" onclick="game.useHint()" class="action-btn w-12 h-12 sm:w-16 sm:h-16 drawn-btn marker-yellow flex items-center justify-center text-2xl sm:text-3xl relative">
                     💡
-                    <span id="hint-count" class="absolute -top-2 -right-2 bg-slate-800 text-white text-lg px-2 rounded-full border-2 border-white">3</span>
+                    <span id="hint-count" class="absolute -top-2 -right-2 bg-slate-800 text-white text-sm sm:text-lg px-1 sm:px-2 rounded-full border-2 border-white flex items-center justify-center min-w-[1.25rem] min-h-[1.25rem]">3</span>
                 </button>
             </div>
         </main>
     </div>
 
-    <!-- МОДАЛКИ -->
+    <!-- МОДАЛКИ (адаптированные) -->
 
     <!-- Настройки -->
-    <div id="modal-settings" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[60] hide modal-overlay backdrop-blur-sm">
-        <div class="drawn-box p-6 sm:p-8 text-center w-full max-w-sm modal-content bg-[#fdf6e3] relative">
-            <button onclick="ui.closeModal('modal-settings')" class="absolute top-2 right-2 text-2xl pb-1 w-10 h-10 drawn-btn marker-red bg-white z-10">✖</button>
-            <h2 class="text-4xl font-bold mb-6 text-slate-900">Настройки ⚙️</h2>
+    <div id="modal-settings" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 sm:p-4 z-[60] hide modal-overlay backdrop-blur-sm">
+        <div class="drawn-box p-4 sm:p-8 text-center w-[95vw] sm:max-w-sm modal-content bg-[#fdf6e3] relative">
+            <button onclick="ui.closeModal('modal-settings')" class="absolute top-2 right-2 text-xl sm:text-2xl pb-1 w-8 h-8 sm:w-10 sm:h-10 drawn-btn marker-red bg-white z-10">✖</button>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6 text-slate-900">Настройки ⚙️</h2>
             
-            <div class="flex flex-col gap-4 text-2xl">
-                <button onclick="audioManager.toggleMusic()" class="w-full drawn-btn marker-blue font-bold py-3 px-4 flex justify-between items-center">
+            <div class="flex flex-col gap-3 sm:gap-4 text-xl sm:text-2xl">
+                <button onclick="audioManager.toggleMusic()" class="w-full drawn-btn marker-blue font-bold py-2 sm:py-3 px-3 sm:px-4 flex justify-between items-center">
                     <span>🎵 Музыка</span><span id="st-music-val" class="text-blue-700">ВКЛ</span>
                 </button>
-                <button onclick="audioManager.toggleSfx()" class="w-full drawn-btn marker-green font-bold py-3 px-4 flex justify-between items-center">
+                <button onclick="audioManager.toggleSfx()" class="w-full drawn-btn marker-green font-bold py-2 sm:py-3 px-3 sm:px-4 flex justify-between items-center">
                     <span>🔊 Звуки</span><span id="st-sfx-val" class="text-green-700">ВКЛ</span>
                 </button>
             </div>
@@ -186,13 +234,13 @@
     </div>
 
     <!-- Продолжение игры (Синхронизация) -->
-    <div id="modal-continue" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-4 z-[55] hide modal-overlay backdrop-blur-md">
-        <div class="drawn-box p-8 text-center w-full max-w-sm modal-content bg-[#fdf6e3]">
-            <span class="text-6xl block mb-2">💾</span>
-            <h2 class="text-4xl font-bold mb-2 text-slate-900">Сохранение</h2>
-            <p class="text-xl text-slate-700 mb-6">Найдена незаконченная игра. Хотите продолжить?</p>
+    <div id="modal-continue" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-2 sm:p-4 z-[55] hide modal-overlay backdrop-blur-md">
+        <div class="drawn-box p-4 sm:p-8 text-center w-[95vw] sm:max-w-sm modal-content bg-[#fdf6e3]">
+            <span class="text-5xl sm:text-6xl block mb-2">💾</span>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-2 text-slate-900">Сохранение</h2>
+            <p class="text-lg sm:text-xl text-slate-700 mb-4 sm:mb-6">Найдена незаконченная игра. Хотите продолжить?</p>
             
-            <div class="flex flex-col gap-3 text-2xl">
+            <div class="flex flex-col gap-2 sm:gap-3 text-xl sm:text-2xl">
                 <button onclick="game.resumeSaved()" class="w-full drawn-btn marker-green font-bold py-2 px-4">Продолжить</button>
                 <button onclick="game.discardSaved()" class="w-full drawn-btn marker-red font-bold py-2 px-4">Начать заново</button>
             </div>
@@ -200,32 +248,32 @@
     </div>
     
     <!-- Финал уровня -->
-    <div id="modal-end" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hide modal-overlay backdrop-blur-sm">
-        <div class="drawn-box p-6 text-center w-full max-w-sm modal-content bg-[#fdf6e3]">
-            <h2 id="modal-title" class="text-5xl font-bold mb-2"></h2>
-            <p class="text-slate-600 text-xl font-bold mb-1">Слово было:</p>
-            <p id="modal-word" class="text-4xl font-bold text-slate-900 mb-6 tracking-widest uppercase border-b-4 border-slate-800 inline-block px-4 pb-1" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;"></p>
+    <div id="modal-end" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 sm:p-4 z-50 hide modal-overlay backdrop-blur-sm">
+        <div class="drawn-box p-4 sm:p-6 text-center w-[95vw] sm:max-w-sm modal-content bg-[#fdf6e3]">
+            <h2 id="modal-title" class="text-4xl sm:text-5xl font-bold mb-2"></h2>
+            <p class="text-slate-600 text-lg sm:text-xl font-bold mb-1">Слово было:</p>
+            <p id="modal-word" class="text-2xl sm:text-4xl font-bold text-slate-900 mb-4 sm:mb-6 tracking-widest uppercase border-b-2 sm:border-b-4 border-slate-800 inline-block px-2 sm:px-4 pb-1" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;"></p>
             
-            <div id="modal-rewards" class="flex justify-center gap-4 mb-6">
-                <div class="drawn-btn marker-yellow px-4 py-1 text-2xl font-bold flex gap-2"><span>💰</span><span id="reward-coins">+0</span></div>
-                <div class="drawn-btn marker-blue px-4 py-1 text-2xl font-bold flex gap-2"><span>🏆</span><span id="reward-score">+0</span></div>
+            <div id="modal-rewards" class="flex justify-center gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div class="drawn-btn marker-yellow px-2 sm:px-4 py-1 text-xl sm:text-2xl font-bold flex gap-1 sm:gap-2"><span>💰</span><span id="reward-coins">+0</span></div>
+                <div class="drawn-btn marker-blue px-2 sm:px-4 py-1 text-xl sm:text-2xl font-bold flex gap-1 sm:gap-2"><span>🏆</span><span id="reward-score">+0</span></div>
             </div>
 
-            <div class="flex flex-col gap-3 text-2xl">
-                <button onclick="game.nextWord()" class="w-full drawn-btn marker-green font-bold py-2 px-4">Следующее слово 🚀</button>
-                <button onclick="ui.goToMenu()" class="w-full drawn-btn border-slate-400 text-slate-600 font-bold py-2 px-4">В меню</button>
+            <div class="flex flex-col gap-2 sm:gap-3 text-xl sm:text-2xl">
+                <button onclick="game.nextWord()" class="w-full drawn-btn marker-green font-bold py-1.5 sm:py-2 px-4">След. слово 🚀</button>
+                <button onclick="ui.goToMenu()" class="w-full drawn-btn border-slate-400 text-slate-600 font-bold py-1.5 sm:py-2 px-4">В меню</button>
             </div>
         </div>
     </div>
 
     <!-- Открытие нового уровня -->
-    <div id="modal-levelup" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-4 z-[55] hide modal-overlay backdrop-blur-md">
-        <div class="drawn-box p-8 text-center w-full max-w-sm modal-content bg-[#fdf6e3]">
-            <span class="text-6xl block mb-2">🎉</span>
-            <h2 class="text-4xl font-bold mb-2 text-slate-900">Новый уровень!</h2>
-            <p class="text-2xl text-slate-700 mb-6">Открыта сложность:<br><span id="levelup-name" class="text-4xl text-blue-600 font-bold underline"></span></p>
+    <div id="modal-levelup" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-2 sm:p-4 z-[55] hide modal-overlay backdrop-blur-md">
+        <div class="drawn-box p-4 sm:p-8 text-center w-[95vw] sm:max-w-sm modal-content bg-[#fdf6e3]">
+            <span class="text-5xl sm:text-6xl block mb-2">🎉</span>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-2 text-slate-900">Новый уровень!</h2>
+            <p class="text-xl sm:text-2xl text-slate-700 mb-4 sm:mb-6">Открыта сложность:<br><span id="levelup-name" class="text-2xl sm:text-4xl text-blue-600 font-bold underline"></span></p>
             
-            <div class="flex flex-col gap-3 text-2xl">
+            <div class="flex flex-col gap-2 sm:gap-3 text-xl sm:text-2xl">
                 <button id="btn-goto-new" class="w-full drawn-btn marker-blue font-bold py-2 px-4">Перейти туда!</button>
                 <button id="btn-stay-old" class="w-full drawn-btn border-slate-400 text-slate-600 font-bold py-2 px-4">Остаться здесь</button>
             </div>
@@ -233,65 +281,63 @@
     </div>
 
     <!-- Магазин (Скины и Бусты) -->
-    <div id="modal-shop" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hide modal-overlay backdrop-blur-sm">
-        <div class="drawn-box w-full max-w-md h-[80vh] flex flex-col overflow-hidden modal-content bg-[#fdf6e3] relative">
-            <button onclick="ui.closeModal('modal-shop')" class="absolute top-2 right-2 text-2xl pb-1 w-10 h-10 drawn-btn marker-red bg-white z-10">✖</button>
-            <div class="p-4 border-b-4 border-slate-800 flex justify-between items-center bg-white" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;">
-                <h2 class="text-4xl font-bold ml-2">Магазин</h2>
-                <div class="text-2xl font-bold text-yellow-700 mr-10 bg-yellow-100 px-3 py-0.5 drawn-box">💰 <span id="shop-coins">0</span></div>
+    <div id="modal-shop" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 sm:p-4 z-50 hide modal-overlay backdrop-blur-sm">
+        <div class="drawn-box w-[95vw] sm:max-w-md h-[85vh] sm:h-[80vh] flex flex-col overflow-hidden modal-content bg-[#fdf6e3] relative">
+            <button onclick="ui.closeModal('modal-shop')" class="absolute top-1 sm:top-2 right-1 sm:right-2 text-xl sm:text-2xl pb-1 w-8 h-8 sm:w-10 sm:h-10 drawn-btn marker-red bg-white z-10 flex items-center justify-center">✖</button>
+            <div class="p-2 sm:p-4 border-b-2 sm:border-b-4 border-slate-800 flex justify-between items-center bg-white" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;">
+                <h2 class="text-2xl sm:text-4xl font-bold ml-1 sm:ml-2">Магазин</h2>
+                <div class="text-lg sm:text-2xl font-bold text-yellow-700 mr-8 sm:mr-10 bg-yellow-100 px-2 sm:px-3 py-0.5 drawn-box">💰 <span id="shop-coins">0</span></div>
             </div>
             
-            <div class="flex border-b-4 border-slate-800 text-xl font-bold bg-white">
-                <button onclick="shop.switchTab('skins')" id="tab-skins" class="flex-1 py-2 text-blue-600 border-r-4 border-slate-800">Скины</button>
-                <button onclick="shop.switchTab('boosts')" id="tab-boosts" class="flex-1 py-2 text-slate-500">Бусты</button>
+            <div class="flex border-b-2 sm:border-b-4 border-slate-800 text-lg sm:text-xl font-bold bg-white">
+                <button onclick="shop.switchTab('skins')" id="tab-skins" class="flex-1 py-1 sm:py-2 text-blue-600 border-r-2 sm:border-r-4 border-slate-800">Скины</button>
+                <button onclick="shop.switchTab('boosts')" id="tab-boosts" class="flex-1 py-1 sm:py-2 text-slate-500">Бусты</button>
             </div>
 
-            <div class="flex-grow overflow-y-auto p-4 paper-bg" id="shop-content">
-                <!-- Контент генерируется JS -->
-            </div>
+            <div class="flex-grow overflow-y-auto p-2 sm:p-4 paper-bg" id="shop-content"></div>
         </div>
     </div>
 
     <!-- Словарь -->
-    <div id="modal-dict" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hide modal-overlay backdrop-blur-sm">
-        <div class="drawn-box w-full max-w-md h-[70vh] flex flex-col overflow-hidden modal-content bg-[#fdf6e3] relative">
-            <button onclick="ui.closeModal('modal-dict')" class="absolute top-2 right-2 text-2xl pb-1 w-10 h-10 drawn-btn marker-red bg-white z-10">✖</button>
-            <div class="p-4 border-b-4 border-slate-800 bg-white" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;">
-                <h2 class="text-4xl font-bold">Словарь</h2>
-                <p class="text-xl text-slate-600">Отгадано: <span id="dict-count" class="font-bold text-blue-600">0</span></p>
+    <div id="modal-dict" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 sm:p-4 z-50 hide modal-overlay backdrop-blur-sm">
+        <div class="drawn-box w-[95vw] sm:max-w-md h-[80vh] sm:h-[70vh] flex flex-col overflow-hidden modal-content bg-[#fdf6e3] relative">
+            <button onclick="ui.closeModal('modal-dict')" class="absolute top-1 sm:top-2 right-1 sm:right-2 text-xl sm:text-2xl pb-1 w-8 h-8 sm:w-10 sm:h-10 drawn-btn marker-red bg-white z-10 flex items-center justify-center">✖</button>
+            <div class="p-3 sm:p-4 border-b-2 sm:border-b-4 border-slate-800 bg-white" style="border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;">
+                <h2 class="text-3xl sm:text-4xl font-bold">Словарь</h2>
+                <p class="text-lg sm:text-xl text-slate-600">Отгадано: <span id="dict-count" class="font-bold text-blue-600">0</span></p>
             </div>
-            <div class="flex-grow overflow-y-auto p-4 flex flex-wrap gap-3 content-start paper-bg text-2xl uppercase" id="dict-list"></div>
+            <div class="flex-grow overflow-y-auto p-2 sm:p-4 flex flex-wrap gap-2 sm:gap-3 content-start paper-bg text-xl sm:text-2xl uppercase" id="dict-list"></div>
         </div>
     </div>
 
     <!-- Вызов другу (PVP) -->
-    <div id="modal-pvp" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 hide modal-overlay backdrop-blur-sm">
-        <div class="drawn-box p-6 sm:p-8 text-center w-full max-w-sm modal-content bg-[#fdf6e3] relative">
-            <button onclick="ui.closeModal('modal-pvp')" class="absolute top-2 right-2 text-2xl pb-1 w-10 h-10 drawn-btn marker-red bg-white">✖</button>
-            <h2 class="text-4xl font-bold mb-2">Вызов! ⚔️</h2>
-            <p class="text-xl text-slate-600 mb-4 leading-tight">Загадай слово и отправь ссылку другу!</p>
-            <input type="text" id="pvp-input" maxlength="15" placeholder="СЛОВО..." class="w-full bg-white drawn-box px-4 py-2 text-3xl font-bold text-center uppercase tracking-widest mb-6 outline-none">
-            <button onclick="pvp.createLink()" class="w-full drawn-btn marker-blue font-bold py-2 px-4 text-2xl">Сгенерировать ссылку</button>
+    <div id="modal-pvp" class="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-2 sm:p-4 z-50 hide modal-overlay backdrop-blur-sm">
+        <div class="drawn-box p-4 sm:p-8 text-center w-[95vw] sm:max-w-sm modal-content bg-[#fdf6e3] relative">
+            <button onclick="ui.closeModal('modal-pvp')" class="absolute top-1 sm:top-2 right-1 sm:right-2 text-xl sm:text-2xl pb-1 w-8 h-8 sm:w-10 sm:h-10 drawn-btn marker-red bg-white flex items-center justify-center">✖</button>
+            <h2 class="text-3xl sm:text-4xl font-bold mb-2 mt-4 sm:mt-0">Вызов! ⚔️</h2>
+            <p class="text-lg sm:text-xl text-slate-600 mb-4 leading-tight">Загадай слово и отправь ссылку другу!</p>
+            <input type="text" id="pvp-input" maxlength="15" placeholder="СЛОВО..." class="w-full bg-white drawn-box px-2 sm:px-4 py-1.5 sm:py-2 text-2xl sm:text-3xl font-bold text-center uppercase tracking-widest mb-4 sm:mb-6 outline-none">
+            <button onclick="pvp.createLink()" class="w-full drawn-btn marker-blue font-bold py-1.5 sm:py-2 px-4 text-xl sm:text-2xl">Сгенерировать ссылку</button>
         </div>
     </div>
 
     <!-- Обучение (Анимированное) -->
-    <div id="tutorial-modal" class="fixed inset-0 bg-slate-900/80 flex flex-col items-center justify-center p-4 z-[60] hide modal-overlay backdrop-blur-sm">
-        <div id="tut-content-box" class="drawn-box p-6 w-full max-w-sm text-center relative modal-content bg-[#fdf6e3]">
-            <h3 class="text-4xl font-bold mb-2">Как играть?</h3>
-            <div class="h-16 flex items-center justify-center text-slate-800 text-2xl font-bold mb-2 px-2 leading-tight" id="tut-text"></div>
+    <div id="tutorial-modal" class="fixed inset-0 bg-slate-900/80 flex flex-col items-center justify-center p-2 sm:p-4 z-[60] hide modal-overlay backdrop-blur-sm">
+        <div id="tut-content-box" class="drawn-box p-4 sm:p-6 w-[95vw] sm:max-w-sm text-center relative modal-content bg-[#fdf6e3]">
+            <h3 class="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2">Как играть?</h3>
+            <div class="h-12 sm:h-16 flex items-center justify-center text-slate-800 text-lg sm:text-2xl font-bold mb-1 sm:mb-2 px-2 leading-tight" id="tut-text"></div>
             
-            <div class="w-full max-w-[200px] mx-auto aspect-square relative drawn-box bg-white/50 mb-4"><canvas id="tut-canvas" class="w-full h-full"></canvas></div>
+            <div class="w-full max-w-[150px] sm:max-w-[200px] mx-auto aspect-square relative drawn-box bg-white/50 mb-2 sm:mb-4"><canvas id="tut-canvas" class="w-full h-full"></canvas></div>
             
-            <div id="tut-word" class="flex justify-center gap-2 text-4xl font-bold mb-4 uppercase"></div>
+            <div id="tut-word" class="flex justify-center gap-1 sm:gap-2 text-2xl sm:text-4xl font-bold mb-2 sm:mb-4 uppercase"></div>
             
-            <div class="flex justify-center gap-2 mb-6 text-2xl font-bold">
-                <div id="tut-k-А" class="w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">А</div>
-                <div id="tut-k-Б" class="w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">Б</div>
-                <div id="tut-k-В" class="w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">В</div>
+            <div class="flex justify-center gap-1.5 sm:gap-2 mb-4 sm:mb-6 text-xl sm:text-2xl font-bold">
+                <div id="tut-k-А" class="w-8 h-8 sm:w-10 sm:h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">А</div>
+                <div id="tut-k-Б" class="w-8 h-8 sm:w-10 sm:h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">Б</div>
+                <div id="tut-k-В" class="w-8 h-8 sm:w-10 sm:h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1">В</div>
             </div>
 
-            <button onclick="tutorial.end()" id="tut-btn-close" class="w-full drawn-btn marker-green font-bold py-2 px-4 text-2xl hide">Понятно, Играть!</button>
+            <button onclick="tutorial.end()" id="tut-btn-close" class="w-full drawn-btn marker-green font-bold py-1.5 sm:py-2 px-4 text-xl sm:text-2xl hide">Понятно, Играть!</button>
         </div>
     </div>
 
@@ -310,7 +356,7 @@
         const tutCtx = document.getElementById('tut-canvas').getContext('2d');
 
         // База слов 
-        const words = { "4": ["БАБА", "БАЗА", "БАНК", "БЕДА", "БОЛЬ", "БРАК", "БРАТ", "БЫЛЬ", "ВЕЩЬ", "ВИНА", "ВИНО", "ВКУС", "ВОДА", "ВОЛЯ", "ВРАГ",
+         const words = { "4": ["БАБА", "БАЗА", "БАНК", "БЕДА", "БОЛЬ", "БРАК", "БРАТ", "БЫЛЬ", "ВЕЩЬ", "ВИНА", "ВИНО", "ВКУС", "ВОДА", "ВОЛЯ", "ВРАГ",
 "ВРАЧ", "ВХОД", "ГЛАЗ", "ГОРА", "ГРЕХ", "ГУБА", "ДАМА", "ДАЧА", "ДВОР", "ДЕЛО", "ДЕНЬ", "ДОЛГ", "ДОЛЯ", "ДОЧЬ", "ДРУГ", "ДУМА", "ДУША", "ДЯДЯ", "ЖЕНА", "ЗВУК", "ЗИМА", "ЗНАК",
 "ЗОНА", "ИГРА", "ИДЕЯ", "ИТОГ", "ИЮЛЬ", "ИЮНЬ", "КАДР", "КЛУБ", "КЛЮЧ", "КОЖА", "КОНЬ", "КОФЕ", "КРАЙ", "КРИК", "КУРС", "КУСТ", "ЛЕТО", "ЛИСТ", "ЛИЦО", "МАМА", "МАТЬ", "МЕРА",
 "МЕТР", "МИНА", "МОЗГ", "МОРЕ", "МОСТ", "МЯСО", "НЕБО", "НОГА", "НОЧЬ", "ОБЕД", "ОКНО", "ОПЫТ", "ОТЕЦ", "ОЧКО", "ПАПА", "ПАРА", "ПИВО", "ПЛАН", "ПОЛЕ", "ПОЛК", "ПОЭТ", "ПУТЬ",
@@ -465,31 +511,25 @@
     "11": ["БОЛЬШИНСТВО", "ВОЗВРАЩЕНИЕ", "ВОЗДЕЙСТВИЕ", "ВОЗМОЖНОСТЬ", "ВПЕЧАТЛЕНИЕ", "ВЫСТУПЛЕНИЕ", "ГОСУДАРСТВО", "ДОСТОИНСТВО",
 "ЗАВИСИМОСТЬ", "ЗАМЕСТИТЕЛЬ", "ИЗОБРАЖЕНИЕ", "КОНСТРУКЦИЯ", "КОНФЕРЕНЦИЯ", "МЕРОПРИЯТИЕ", "НАПРАВЛЕНИЕ", "ОБЕСПЕЧЕНИЕ", "ОБРАЗОВАНИЕ", "ОБЪЕДИНЕНИЕ", "ОБЯЗАННОСТЬ", "ОПРЕДЕЛЕНИЕ",
 "ОРГАНИЗАЦИЯ", "ОСОБЕННОСТЬ", "ПЕРСПЕКТИВА", "ПОВЕРХНОСТЬ", "ПОСЛЕДСТВИЕ", "ПОТРЕБНОСТЬ", "ПРЕДЛОЖЕНИЕ", "ПРЕДПРИЯТИЕ", "ПРИСУТСТВИЕ", "РОДСТВЕННИК", "РУКОВОДСТВО", "СЛЕДОВАТЕЛЬ",
-"СПОСОБНОСТЬ", "ТЕМПЕРАТУРА", "УНИВЕРСИТЕТ", "ЭКСПЕРИМЕНТ"] };;
+"СПОСОБНОСТЬ", "ТЕМПЕРАТУРА", "УНИВЕРСИТЕТ", "ЭКСПЕРИМЕНТ"] };
         
         const keyboardLayout = ['ЙЦУКЕНГШЩЗХЪ', 'ФЫВАПРОЛДЖЭ', 'ЯЧСМИТЬБЮ'];
         
-        // Стартовые параметры: 0 монет и 3 подсказки
         let pData = { coins: 0, score: 0, stats: { easy: 0, medium: 0, hard: 0, impossible: 0, random: 0, daily: 0 }, dict: [], skins: [0], equippedSkin: 0, hints: 3, erasers: 3, tut: false, plays: 0, lastDaily: '', freeChest: '', activeGame: null, settings: { music: true, sfx: true } };
         let currentWord = '', guessedLetters = [], wrongGuesses = 0, difficulty = 'easy', isPvp = false, gameActive = false, statsBeforeGame = {};
         const MAX_ERRORS = 8;
         
-        // Получение Московского времени для "Слова дня" в формате YYYY-MM-DD
         const getMskDateString = () => {
             const date = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
             return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
         };
 
-        // Генератор предсказуемого (одинакового для всех) Слово Дня
         const getDailyWord = () => {
             const date = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
             const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
             const allWords = Object.values(words).flat();
-            
-            // Простейший стабильный PRNG
             let hash = Math.sin(seed) * 10000;
             hash = hash - Math.floor(hash);
-            
             const index = Math.floor(hash * allWords.length);
             return allWords[index];
         };
@@ -538,7 +578,6 @@
                 s.play().catch(e => console.log('SFX blocked', e));
             },
 
-            // Генерация мягкого звука тапа "на лету" (без задержек и файлов)
             playClick: () => {
                 if (!pData.settings.sfx || !audioManager.started) return;
                 try {
@@ -582,7 +621,6 @@
             }
         };
 
-        // Разблокировка звука при первом касании
         document.body.addEventListener('click', () => {
             if (!audioManager.started) {
                 audioManager.started = true;
@@ -602,7 +640,6 @@
             }
         }, { once: true });
 
-        // Собственный мягкий клик на все кнопки
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('button');
             if (btn) {
@@ -633,7 +670,6 @@
                         vkBridge.send('VKWebAppStorageGet', { keys: ['pData'] }).then(d => { 
                             if (d.keys && d.keys[0].value) {
                                 const loadedData = JSON.parse(d.keys[0].value);
-                                // Чистка старых данных (adChests и hintsUpgraded больше не нужны)
                                 delete loadedData.adChests;
                                 delete loadedData.hintsUpgraded;
                                 
@@ -668,7 +704,6 @@
                 }
             },
             
-            // Безопасное сохранение (отложенное, чтобы ВК не заблокировал за спам)
             save: (force = false) => { 
                 if(force) {
                     try { vkBridge.send('VKWebAppStorageSet', { key: 'pData', value: JSON.stringify(pData) }); } catch(e){}
@@ -685,7 +720,6 @@
             showReward: async () => { try { const d = await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' }); return d.result; } catch(e) { return false; } }
         };
 
-        // Гарантированная пауза музыки и сохранение при сворачивании игры
         document.addEventListener('visibilitychange', () => { 
             if (document.visibilityState === 'hidden') {
                 vk.save(true);
@@ -694,6 +728,13 @@
                 if (pData.settings.music && audioManager.started && audioManager.currentBgm) {
                     audioManager.currentBgm.play().catch(()=>{});
                 }
+            }
+        });
+
+        window.addEventListener('resize', () => { 
+            if(gameActive) {
+                draw.resizeCanvas(); 
+                ui.createKeyboard(); 
             }
         });
 
@@ -850,7 +891,7 @@
                         ui.openModal('modal-levelup');
                     } else {
                         document.getElementById('modal-title').textContent = isWin ? 'Победа! 🎉' : 'Увы... 💀';
-                        document.getElementById('modal-title').className = isWin ? 'text-5xl font-bold mb-2 text-green-600' : 'text-5xl font-bold mb-2 text-red-600';
+                        document.getElementById('modal-title').className = isWin ? 'text-4xl sm:text-5xl font-bold mb-2 text-green-600' : 'text-4xl sm:text-5xl font-bold mb-2 text-red-600';
                         document.getElementById('modal-word').textContent = currentWord;
                         document.getElementById('reward-coins').textContent = `+${c}`;
                         document.getElementById('reward-score').textContent = `+${s}`;
@@ -974,7 +1015,6 @@
                 checkLvl('random', pData.stats.impossible);
                 
                 const dBtn = document.getElementById('btn-daily');
-                // Проверка даты по Москве
                 if(pData.lastDaily === getMskDateString()) { 
                     dBtn.classList.add('locked-level', 'opacity-50'); dBtn.textContent = '🌟 Жди завтра'; dBtn.onclick=null; 
                 }
@@ -983,10 +1023,10 @@
                 }
             },
             displayWord: () => {
-                const lh = 'h-10 sm:h-12';
+                // Полностью переведено на flex-shrink и резиновые размеры контейнеров
                 elements.wordContainer.innerHTML = currentWord.split('').map(l => 
-                    `<div class="flex flex-col items-center justify-center ${lh} w-6 sm:w-8 border-b-4 border-slate-800 mx-0.5 sm:mx-1 mb-2">
-                        <span class="text-slate-900 text-3xl sm:text-4xl font-bold leading-none pb-1">${guessedLetters.includes(l) ? l : '&nbsp;'}</span>
+                    `<div class="word-letter-container flex flex-col items-center justify-center border-slate-800 flex-shrink">
+                        <span class="word-letter text-slate-900 font-bold leading-none">${guessedLetters.includes(l) ? l : '&nbsp;'}</span>
                     </div>`
                 ).join('');
                 if (gameActive && currentWord.split('').every(l => guessedLetters.includes(l))) game.end(true);
@@ -994,10 +1034,10 @@
             createKeyboard: () => {
                 elements.keyboardContainer.innerHTML = '';
                 keyboardLayout.forEach(row => {
-                    const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center gap-1.5 w-full';
+                    const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center w-full';
                     row.split('').forEach(key => {
                         const btn = document.createElement('button'); btn.textContent = key; btn.id = `key-${key}`;
-                        btn.className = 'key-btn text-slate-800 h-10 w-[8.5%] max-w-[2.5rem] flex items-center justify-center pb-1 active:scale-90';
+                        btn.className = 'key-btn text-slate-800 flex items-center justify-center active:scale-90 font-bold';
                         btn.onclick = () => game.handleGuess(key);
                         if (guessedLetters.includes(key)) {
                             btn.disabled = true;
@@ -1020,50 +1060,47 @@
             open: () => { ui.openModal('modal-shop'); shop.switchTab('skins'); ui.updateCoins(); },
             switchTab: (tab) => {
                 ['skins','boosts'].forEach(t => {
-                    document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-2 text-blue-600 border-r-4 border-slate-800 bg-blue-50' : 'flex-1 py-2 text-slate-500 border-r-4 border-slate-800 bg-white';
+                    document.getElementById(`tab-${t}`).className = t===tab ? 'flex-1 py-1 sm:py-2 text-blue-600 border-r-2 sm:border-r-4 border-slate-800 bg-blue-50' : 'flex-1 py-1 sm:py-2 text-slate-500 border-r-2 sm:border-r-4 border-slate-800 bg-white';
                 });
-                document.getElementById('tab-boosts').classList.remove('border-r-4');
+                document.getElementById('tab-boosts').classList.remove('border-r-2', 'sm:border-r-4');
                 const c = document.getElementById('shop-content'); c.innerHTML = '';
                 
                 if(tab === 'skins') {
-                    const grid = document.createElement('div'); grid.className = 'grid grid-cols-3 gap-3';
+                    const grid = document.createElement('div'); grid.className = 'grid grid-cols-3 gap-2 sm:gap-3';
                     const skinMap = {0:['👤',0], 1:['🧢',200], 2:['🎩',300], 3:['👑',1000], 4:['🕶️',250], 5:['🎀',250], 6:['😎',400], 9:['👽',900]};
                     for(let i of [0, 1, 2, 3, 4, 5, 6, 9]) {
                         const owns = pData.skins.includes(i) || i === 0; const eq = pData.equippedSkin === i; const price = skinMap[i][1];
-                        grid.innerHTML += `<div class="drawn-box bg-white p-2 flex flex-col items-center skin-card ${eq?'border-blue-600 bg-blue-50':''}" onclick="shop.handleSkin(${i}, ${price})">
-                            <span class="text-5xl my-2">${skinMap[i][0]}</span>
-                            ${i === 0 && !eq ? '<span class="text-sm font-bold text-slate-500 bg-slate-100 px-2 rounded">БАЗОВЫЙ</span>' : ''}
-                            ${owns ? (eq ? '<span class="text-sm font-bold text-white bg-blue-600 px-2 rounded">НАДЕТО</span>' : (i !== 0 ? '<span class="text-sm font-bold text-slate-600 border-2 border-slate-300 px-2 rounded">НАДЕТЬ</span>' : '')) : `<span class="text-sm font-bold text-yellow-800 bg-yellow-200 border-2 border-yellow-400 px-2 rounded w-full text-center">💰 ${price}</span>`}
+                        grid.innerHTML += `<div class="drawn-box bg-white p-1 sm:p-2 flex flex-col items-center skin-card ${eq?'border-blue-600 bg-blue-50':''}" onclick="shop.handleSkin(${i}, ${price})">
+                            <span class="text-4xl sm:text-5xl my-1 sm:my-2">${skinMap[i][0]}</span>
+                            ${i === 0 && !eq ? '<span class="text-xs sm:text-sm font-bold text-slate-500 bg-slate-100 px-1 sm:px-2 rounded">БАЗОВЫЙ</span>' : ''}
+                            ${owns ? (eq ? '<span class="text-xs sm:text-sm font-bold text-white bg-blue-600 px-1 sm:px-2 rounded">НАДЕТО</span>' : (i !== 0 ? '<span class="text-xs sm:text-sm font-bold text-slate-600 border-2 border-slate-300 px-1 sm:px-2 rounded">НАДЕТЬ</span>' : '')) : `<span class="text-xs sm:text-sm font-bold text-yellow-800 bg-yellow-200 border-2 border-yellow-400 px-1 sm:px-2 rounded w-full text-center">💰 ${price}</span>`}
                         </div>`;
                     }
                     c.appendChild(grid);
                 } else if(tab === 'boosts') {
                     const today = new Date().toISOString().split('T')[0];
-                    if (pData.freeChest !== today) {
-                        pData.freeChest = '';
-                        vk.save();
-                    }
+                    if (pData.freeChest !== today) { pData.freeChest = ''; vk.save(); }
                     const freeAv = pData.freeChest !== today;
                     
                     c.innerHTML = `
-                    <div class="text-center py-4 drawn-box bg-white mb-6">
-                        <span class="text-7xl block mb-2">🎁</span>
-                        <h3 class="font-bold text-3xl mb-1">Сундук удачи</h3>
-                        <p class="text-lg text-slate-500 mb-6 leading-tight">Монеты, ластики или подсказки!</p>
-                        ${freeAv ? `<button onclick="shop.openChest('free')" class="w-[90%] mx-auto drawn-btn marker-green font-bold py-2 text-2xl mb-3 block">Открыть БЕСПЛАТНО</button>` : ''}
-                        ${!freeAv ? `<button onclick="shop.openChest('ad')" class="w-[90%] mx-auto drawn-btn marker-blue font-bold py-2 text-xl mb-3 flex justify-center items-center gap-2"><span>Реклама за награду</span></button>` : ''}
+                    <div class="text-center py-2 sm:py-4 drawn-box bg-white mb-4 sm:mb-6">
+                        <span class="text-6xl sm:text-7xl block mb-1 sm:mb-2">🎁</span>
+                        <h3 class="font-bold text-2xl sm:text-3xl mb-1">Сундук удачи</h3>
+                        <p class="text-base sm:text-lg text-slate-500 mb-4 sm:mb-6 leading-tight">Монеты, ластики или подсказки!</p>
+                        ${freeAv ? `<button onclick="shop.openChest('free')" class="w-[90%] mx-auto drawn-btn marker-green font-bold py-1.5 sm:py-2 text-xl sm:text-2xl mb-2 sm:mb-3 block">Открыть БЕСПЛАТНО</button>` : ''}
+                        ${!freeAv ? `<button onclick="shop.openChest('ad')" class="w-[90%] mx-auto drawn-btn marker-blue font-bold py-1.5 sm:py-2 text-lg sm:text-xl mb-2 sm:mb-3 flex justify-center items-center gap-2"><span>Реклама за награду</span></button>` : ''}
                     </div>
                     
-                    <div class="space-y-4">
-                        <div class="drawn-box bg-white p-4 flex items-center justify-between">
-                            <div class="flex items-center gap-3"><div class="text-4xl">💡</div><div class="leading-none"><p class="font-bold text-2xl">Подсказка</p><p class="text-sm text-slate-500">Откроет 1 букву</p></div></div>
-                            <button onclick="shop.buyBoost('hint')" class="drawn-btn marker-yellow px-4 py-1 text-xl font-bold">💰 50</button>
+                    <div class="space-y-3 sm:space-y-4">
+                        <div class="drawn-box bg-white p-3 sm:p-4 flex items-center justify-between">
+                            <div class="flex items-center gap-2 sm:gap-3"><div class="text-3xl sm:text-4xl">💡</div><div class="leading-none"><p class="font-bold text-xl sm:text-2xl">Подсказка</p><p class="text-xs sm:text-sm text-slate-500">Откроет 1 букву</p></div></div>
+                            <button onclick="shop.buyBoost('hint')" class="drawn-btn marker-yellow px-3 sm:px-4 py-1 text-lg sm:text-xl font-bold">💰 50</button>
                         </div>
-                        <div class="drawn-box bg-white p-4 flex items-center justify-between">
-                            <div class="flex items-center gap-3"><div class="text-4xl">🧽</div><div class="leading-none"><p class="font-bold text-2xl">Ластик</p><p class="text-sm text-slate-500">Сотрет 1 ошибку</p></div></div>
-                            <button onclick="shop.buyBoost('eraser')" class="drawn-btn marker-red px-4 py-1 text-xl font-bold">💰 50</button>
+                        <div class="drawn-box bg-white p-3 sm:p-4 flex items-center justify-between">
+                            <div class="flex items-center gap-2 sm:gap-3"><div class="text-3xl sm:text-4xl">🧽</div><div class="leading-none"><p class="font-bold text-xl sm:text-2xl">Ластик</p><p class="text-xs sm:text-sm text-slate-500">Сотрет 1 ошибку</p></div></div>
+                            <button onclick="shop.buyBoost('eraser')" class="drawn-btn marker-red px-3 sm:px-4 py-1 text-lg sm:text-xl font-bold">💰 50</button>
                         </div>
-                        <p class="text-center text-lg text-slate-600 mt-2 font-bold">У вас: Подсказок — <span id="shop-hints">${pData.hints}</span> | Ластиков — <span id="shop-erasers">${pData.erasers}</span></p>
+                        <p class="text-center text-base sm:text-lg text-slate-600 mt-2 font-bold">У вас: Подсказок — <span id="shop-hints">${pData.hints}</span> | Ластиков — <span id="shop-erasers">${pData.erasers}</span></p>
                     </div>`;
                 }
             },
@@ -1076,7 +1113,7 @@
                     pData.coins -= price; 
                     pData.skins.push(id); 
                     pData.equippedSkin = id; 
-                    if (pData.settings.sfx) audioManager.playSfx('correct'); // Звук покупки
+                    if (pData.settings.sfx) audioManager.playSfx('correct'); 
                     ui.showNotification("Скин куплен! 🎉"); 
                 }
                 else { ui.showNotification("Мало монет! 💰"); return; }
@@ -1092,13 +1129,8 @@
             openChest: async (type) => {
                 if (type === 'ad') { 
                     const res = await vk.showReward(); 
-                    if(!res) {
-                        ui.showNotification("Реклама не досмотрена 🚫");
-                        return; 
-                    }
-                } else { 
-                    pData.freeChest = new Date().toISOString().split('T')[0]; 
-                }
+                    if(!res) { ui.showNotification("Реклама не досмотрена 🚫"); return; }
+                } else { pData.freeChest = new Date().toISOString().split('T')[0]; }
                 
                 const rand = Math.random();
                 if (rand < 0.20) { pData.hints++; ui.showNotification("🎉 +1 Подсказка!"); } else if (rand < 0.40) { pData.erasers++; ui.showNotification("🎉 +1 Ластик!"); }
@@ -1121,7 +1153,7 @@
                 
                 const setWord = (str) => { 
                     document.getElementById('tut-word').innerHTML = str.split('').map(l => 
-                        `<div class="flex items-center justify-center h-10 w-6 border-b-4 border-slate-800 mx-0.5 mb-2"><span class="leading-none text-slate-900 pb-1 font-bold">${l === ' ' ? '&nbsp;' : l}</span></div>`
+                        `<div class="flex items-center justify-center h-8 sm:h-10 w-5 sm:w-6 border-b-2 sm:border-b-4 border-slate-800 mx-0.5 mb-1 sm:mb-2"><span class="leading-none text-slate-900 pb-0.5 sm:pb-1 font-bold">${l === ' ' ? '&nbsp;' : l}</span></div>`
                     ).join(''); 
                 };
                 
@@ -1130,9 +1162,9 @@
                     k.classList.add('anim-press');
                     setTimeout(() => {
                         k.classList.remove('anim-press');
-                        if(type === 'correct') { k.className = 'w-10 h-10 border-2 border-green-600 bg-green-200 text-green-900 rounded-lg flex items-center justify-center pb-1 font-bold'; }
-                        if(type === 'wrong') { k.className = 'w-10 h-10 border-2 border-slate-400 bg-transparent text-slate-400 rounded-lg flex items-center justify-center pb-1 line-through'; }
-                    }, 200); // Ускорено
+                        if(type === 'correct') { k.className = 'w-8 h-8 sm:w-10 sm:h-10 border-2 border-green-600 bg-green-200 text-green-900 rounded-lg flex items-center justify-center pb-1 font-bold'; }
+                        if(type === 'wrong') { k.className = 'w-8 h-8 sm:w-10 sm:h-10 border-2 border-slate-400 bg-transparent text-slate-400 rounded-lg flex items-center justify-center pb-1 line-through'; }
+                    }, 200); 
                 };
 
                 const txt = document.getElementById('tut-text');
@@ -1140,44 +1172,44 @@
                 while(tutorial.active) {
                     draw.hangman(tutCtx, 0); 
                     setWord('    '); 
-                    document.querySelectorAll('[id^="tut-k-"]').forEach(k => k.className = 'w-10 h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1 text-slate-800');
+                    document.querySelectorAll('[id^="tut-k-"]').forEach(k => k.className = 'w-8 h-8 sm:w-10 sm:h-10 border-2 border-slate-800 bg-white rounded-lg flex items-center justify-center pb-1 text-slate-800');
                     
                     txt.innerHTML = "Твоя цель &mdash; <span class='text-green-600'>разгадать слово!</span>"; 
-                    await new Promise(r => setTimeout(r, 500)); if(!tutorial.active) break; // Ускорено
+                    await new Promise(r => setTimeout(r, 1000)); if(!tutorial.active) break; 
                     
                     txt.textContent = "Выбирай буквы на клавиатуре...";
-                    await new Promise(r => setTimeout(r, 600)); if(!tutorial.active) break; // Ускорено
+                    await new Promise(r => setTimeout(r, 1200)); if(!tutorial.active) break; 
                     
                     pressKey('А', 'correct'); 
-                    await new Promise(r => setTimeout(r, 200)); // Ускорено
+                    await new Promise(r => setTimeout(r, 400)); 
                     setWord('   А');
                     txt.innerHTML = "Верно! <span class='text-green-600'>Буква на месте.</span>"; 
-                    await new Promise(r => setTimeout(r, 1000)); if(!tutorial.active) break; // Ускорено
+                    await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break; 
                     
                     txt.textContent = "А если ошибиться?"; 
-                    await new Promise(r => setTimeout(r, 600)); if(!tutorial.active) break; // Ускорено
+                    await new Promise(r => setTimeout(r, 1200)); if(!tutorial.active) break; 
                     
                     pressKey('Б', 'wrong'); 
-                    await new Promise(r => setTimeout(r, 200)); // Ускорено
+                    await new Promise(r => setTimeout(r, 400)); 
                     
                     for(let i=1; i<=4; i++) {
                         draw.hangman(tutCtx, i);
-                        await new Promise(r => setTimeout(r, 75)); // Ускорено
+                        await new Promise(r => setTimeout(r, 75)); 
                     }
                     txt.innerHTML = "За ошибку <span class='text-red-600'>рисуем деталь...</span>"; 
-                    await new Promise(r => setTimeout(r, 1000)); if(!tutorial.active) break; // Ускорено
+                    await new Promise(r => setTimeout(r, 2000)); if(!tutorial.active) break; 
                     
-                    await new Promise(r => setTimeout(r, 300)); if(!tutorial.active) break; // Ускорено
+                    await new Promise(r => setTimeout(r, 600)); if(!tutorial.active) break; 
                     
                     pressKey('В', 'wrong'); 
-                    await new Promise(r => setTimeout(r, 200)); // Ускорено
+                    await new Promise(r => setTimeout(r, 400)); 
                     
                     for(let i=5; i<=8; i++) {
                         draw.hangman(tutCtx, i);
-                        await new Promise(r => setTimeout(r, 75)); // Ускорено
+                        await new Promise(r => setTimeout(r, 75)); 
                     }
                     txt.innerHTML = "<span class='text-red-600'>8 ошибок</span> &mdash; и ты проиграл!";
-                    await new Promise(r => setTimeout(r, 1750)); // Ускорено
+                    await new Promise(r => setTimeout(r, 3500));
                 }
             },
             end: () => { tutorial.active = false; pData.tut = true; vk.save(true); ui.closeModal('tutorial-modal'); ui.showMenu(); }
@@ -1193,7 +1225,7 @@
             start: (word) => { ui.closeAllModals(); game.init('pvp'); isPvp = true; currentWord = word.toUpperCase(); game.setupUI(); }
         };
 
-        const dict = { open: () => { ui.openModal('modal-dict'); document.getElementById('dict-count').textContent = pData.dict.length; document.getElementById('dict-list').innerHTML = pData.dict.length ? pData.dict.map(w => `<div class="drawn-box bg-blue-50 text-blue-900 px-3 py-1 font-bold">${w}</div>`).join('') : '<p class="text-slate-500 w-full text-center mt-10">Тут пока пусто.</p>'; } };
+        const dict = { open: () => { ui.openModal('modal-dict'); document.getElementById('dict-count').textContent = pData.dict.length; document.getElementById('dict-list').innerHTML = pData.dict.length ? pData.dict.map(w => `<div class="drawn-box bg-blue-50 text-blue-900 px-2 sm:px-3 py-0.5 sm:py-1 font-bold">${w}</div>`).join('') : '<p class="text-slate-500 w-full text-center mt-10">Тут пока пусто.</p>'; } };
 
         vk.init();
     </script>
